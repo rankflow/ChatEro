@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  tokens    Token[]
+  payments  Payment[]
+  messages  Message[]
+  sessions  Session[]
+
+  @@map("users")
+}
+
+model Token {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tokens")
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int
+  currency    String   @default("usd")
+  status      String   @default("pending")
+  stripeId    String?  @unique
+  description String?
+  metadata    String?  // JSON string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Avatar {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  personality String
+  imageUrl    String
+  isPremium   Boolean  @default(false)
+  category    String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  messages Message[]
+
+  @@map("avatars")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  userId    String
+  avatarId  String?
+  content   String
+  isUser    Boolean  @default(true)
+  tokensUsed Int     @default(0)
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar Avatar? @relation(fields: [avatarId], references: [id])
+
+  @@map("messages")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+} 

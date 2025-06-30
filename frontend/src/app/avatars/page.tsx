@@ -1,0 +1,255 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Heart, Crown, Filter, Search } from 'lucide-react';
+
+interface Avatar {
+  id: string;
+  name: string;
+  description: string;
+  personality: string;
+  imageUrl: string;
+  isPremium: boolean;
+  category: string;
+}
+
+export default function AvatarsPage() {
+  const [avatars, setAvatars] = useState<Avatar[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const categories = [
+    { id: 'all', name: 'Todos' },
+    { id: 'misteriosa', name: 'Misteriosa' },
+    { id: 'madura', name: 'Madura' },
+    { id: 'joven', name: 'Joven' },
+    { id: 'elegante', name: 'Elegante' },
+    { id: 'personalizado', name: 'Personalizado' }
+  ];
+
+  useEffect(() => {
+    // Simular carga de datos
+    const mockAvatars: Avatar[] = [
+      {
+        id: 'avatar_1',
+        name: 'Luna',
+        description: 'Una chica misteriosa y seductora',
+        personality: 'Misteriosa, seductora, inteligente',
+        imageUrl: 'https://via.placeholder.com/300x400/FF6B9D/FFFFFF?text=Luna',
+        isPremium: false,
+        category: 'misteriosa'
+      },
+      {
+        id: 'avatar_2',
+        name: 'Sofia',
+        description: 'Una mujer madura y experimentada',
+        personality: 'Madura, experimentada, dominante',
+        imageUrl: 'https://via.placeholder.com/300x400/9B59B6/FFFFFF?text=Sofia',
+        isPremium: true,
+        category: 'madura'
+      },
+      {
+        id: 'avatar_3',
+        name: 'Aria',
+        description: 'Una chica joven y juguetona',
+        personality: 'Juguetona, inocente, curiosa',
+        imageUrl: 'https://via.placeholder.com/300x400/3498DB/FFFFFF?text=Aria',
+        isPremium: false,
+        category: 'joven'
+      },
+      {
+        id: 'avatar_4',
+        name: 'Venus',
+        description: 'Una diosa de la belleza y el amor',
+        personality: 'Elegante, sofisticada, apasionada',
+        imageUrl: 'https://via.placeholder.com/300x400/E74C3C/FFFFFF?text=Venus',
+        isPremium: true,
+        category: 'elegante'
+      },
+      {
+        id: 'avatar_5',
+        name: 'Nova',
+        description: 'Una chica rebelde y aventurera',
+        personality: 'Rebelde, aventurera, independiente',
+        imageUrl: 'https://via.placeholder.com/300x400/F39C12/FFFFFF?text=Nova',
+        isPremium: false,
+        category: 'joven'
+      },
+      {
+        id: 'avatar_6',
+        name: 'Maya',
+        description: 'Una mujer sabia y espiritual',
+        personality: 'Sabia, espiritual, comprensiva',
+        imageUrl: 'https://via.placeholder.com/300x400/27AE60/FFFFFF?text=Maya',
+        isPremium: true,
+        category: 'madura'
+      }
+    ];
+
+    setTimeout(() => {
+      setAvatars(mockAvatars);
+      setLoading(false);
+    }, 1000);
+  }, []);
+
+  const filteredAvatars = avatars.filter(avatar => {
+    const matchesCategory = selectedCategory === 'all' || avatar.category === selectedCategory;
+    const matchesSearch = avatar.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         avatar.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando avatares...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-pink-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <Link href="/" className="flex items-center space-x-2">
+              <Heart className="h-8 w-8 text-pink-500" />
+              <span className="text-2xl font-bold text-gray-900">Chat Ero</span>
+            </Link>
+            <nav className="flex space-x-6">
+              <Link href="/" className="text-gray-600 hover:text-pink-500 transition-colors">
+                Inicio
+              </Link>
+              <Link href="/chat" className="text-gray-600 hover:text-pink-500 transition-colors">
+                Chat
+              </Link>
+              <Link href="/pricing" className="text-gray-600 hover:text-pink-500 transition-colors">
+                Precios
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Elige tu Avatar
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Descubre personajes únicos con personalidades distintas. 
+            Cada avatar tiene su propio estilo y forma de interactuar.
+          </p>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg p-6 mb-8 shadow-sm">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <input
+                  type="text"
+                  placeholder="Buscar avatares..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Category Filter */}
+            <div className="flex items-center space-x-2">
+              <Filter className="h-5 w-5 text-gray-400" />
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              >
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Avatars Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredAvatars.map((avatar) => (
+            <div key={avatar.id} className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              {/* Avatar Image */}
+              <div className="relative">
+                <img
+                  src={avatar.imageUrl}
+                  alt={avatar.name}
+                  className="w-full h-80 object-cover"
+                />
+                {avatar.isPremium && (
+                  <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-semibold flex items-center">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Premium
+                  </div>
+                )}
+              </div>
+
+              {/* Avatar Info */}
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-semibold text-gray-900">{avatar.name}</h3>
+                  {avatar.isPremium && (
+                    <Crown className="h-5 w-5 text-yellow-500" />
+                  )}
+                </div>
+                <p className="text-gray-600 text-sm mb-3">{avatar.description}</p>
+                <p className="text-gray-500 text-xs mb-4">{avatar.personality}</p>
+                
+                {/* Action Buttons */}
+                <div className="flex space-x-2">
+                  <Link
+                    href={`/chat?avatar=${avatar.id}`}
+                    className="flex-1 bg-pink-500 text-white text-center py-2 px-4 rounded-lg hover:bg-pink-600 transition-colors text-sm font-medium"
+                  >
+                    Chatear
+                  </Link>
+                  <button className="bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors">
+                    <Heart className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Empty State */}
+        {filteredAvatars.length === 0 && (
+          <div className="text-center py-12">
+            <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No se encontraron avatares</h3>
+            <p className="text-gray-600">Intenta ajustar los filtros o la búsqueda.</p>
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 py-8 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-gray-600">
+            &copy; 2024 Chat Ero. Todos los avatares son generados por IA y no representan personas reales.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+} 
