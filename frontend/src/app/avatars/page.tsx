@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Heart, Crown, Filter, Search } from 'lucide-react';
+import { Heart, Crown, Filter, Search, Eye } from 'lucide-react';
 
 interface Avatar {
   id: string;
@@ -222,6 +222,13 @@ export default function AvatarsPage() {
                     className="flex-1 bg-pink-500 text-white text-center py-2 px-4 rounded-lg hover:bg-pink-600 transition-colors text-sm font-medium"
                   >
                     Chatear
+                  </Link>
+                  <Link
+                    href={`/avatars/${avatar.id}`}
+                    className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors"
+                    title="Ver perfil detallado"
+                  >
+                    <Eye className="h-4 w-4" />
                   </Link>
                   <button className="bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors">
                     <Heart className="h-4 w-4" />

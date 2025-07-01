@@ -67,6 +67,39 @@ model Avatar {
   isPremium   Boolean  @default(false)
   category    String
   isActive    Boolean  @default(true)
+  
+  // Desarrollo creativo del personaje
+  background  String?  // Trasfondo general del personaje
+  origin      String?  // Orígenes y lugar de nacimiento
+  age         Int?     // Edad del personaje
+  occupation  String?  // Profesión o ocupación
+  interests   String?  // Intereses y hobbies
+  fears       String?  // Miedos y vulnerabilidades
+  dreams      String?  // Sueños y aspiraciones
+  secrets     String?  // Secretos del personaje
+  relationships String? // Relaciones importantes
+  lifeExperiences String? // Experiencias de vida significativas
+  personalityTraits String? // Rasgos de personalidad detallados
+  communicationStyle String? // Estilo de comunicación
+  emotionalState String? // Estado emocional típico
+  motivations  String?  // Motivaciones y deseos
+  conflicts    String?  // Conflictos internos y externos
+  growth       String?  // Arco de desarrollo del personaje
+  
+  // Metadatos del personaje
+  voiceType   String?  // Tipo de voz (suave, ronca, etc.)
+  accent      String?  // Acento o forma de hablar
+  mannerisms  String?  // Gestos y manerismos característicos
+  style       String?  // Estilo de vestir y apariencia
+  scent       String?  // Perfume o aroma característico
+  
+  // Configuración del chat
+  chatStyle   String?  // Estilo de conversación específico
+  topics      String?  // Temas favoritos de conversación
+  boundaries  String?  // Límites y temas a evitar
+  kinks       String?  // Preferencias sexuales (si aplica)
+  roleplay    String?  // Estilo de roleplay preferido
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

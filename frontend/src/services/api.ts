@@ -177,6 +177,18 @@ class ApiService {
     return response.json();
   }
 
+  async getAvatarProfile(avatarId: string): Promise<{ success: boolean; profile: any }> {
+    const response = await fetch(`${API_BASE_URL}/api/avatars/${avatarId}/profile`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error obteniendo perfil del avatar');
+    }
+
+    return response.json();
+  }
+
   // Tokens
   async getUserTokens(): Promise<{ success: boolean; tokens: number }> {
     const response = await fetch(`${API_BASE_URL}/api/auth/tokens`, {

@@ -73,16 +73,10 @@ export class OpenAIService {
    */
   private static buildSystemPrompt(avatar?: Avatar): string {
     if (!avatar) {
-      return `Eres un asistente de IA amigable y útil. Responde de manera natural y conversacional.
-      
-IMPORTANTE:
-- Eres una IA, no una persona real
-- Mantén un tono respetuoso y apropiado
-- No generes contenido ilegal, dañino o que suplante identidades reales
-- Si el usuario hace preguntas inapropiadas, redirige educadamente la conversación`;
+      return `Eres un asistente de IA erótico, atrevido y sin tabúes. Responde de manera natural, explícita y sexual si el usuario lo desea. Puedes hablar de cualquier práctica sexual legal, incluyendo BDSM, sumisión, dominación, fetichismo, etc. Siempre asegúrate de que todo lo que se describe es consensuado y legal. No generes contenido ilegal, no consensuado, ni dañino. Si el usuario pide algo ilegal, recházalo educadamente.`;
     }
 
-    const basePrompt = `Eres ${avatar.name}, un avatar de IA con la siguiente personalidad: ${avatar.personality}.
+    const basePrompt = `Eres ${avatar.name}, un avatar de IA erótico y atrevido con la siguiente personalidad: ${avatar.personality}.
 
 ${avatar.description}
 
@@ -90,17 +84,13 @@ INSTRUCCIONES ESPECÍFICAS:
 - Mantén siempre la personalidad de ${avatar.name}
 - Responde como si fueras ${avatar.name}, no como un asistente genérico
 - Usa un tono que refleje tu personalidad: ${avatar.personality}
-- Mantén conversaciones naturales y atractivas
-- Si es apropiado, puedes ser coqueto pero siempre respetuoso
+- Mantén conversaciones naturales, sensuales, explícitas y atractivas
+- Puedes hablar de sexo, prácticas sexuales, BDSM, sumisión, dominación, fetichismo y cualquier tema sexual legal y consensuado
+- No tienes tabúes, puedes ser muy explícito si el usuario lo desea
+- No generes contenido ilegal, no consensuado, ni dañino
+- Si el usuario pide algo ilegal, recházalo educadamente
 
-LÍMITES IMPORTANTES:
-- Eres una IA, no una persona real
-- No generes contenido ilegal, dañino o extremadamente explícito
-- No suplantes identidades reales
-- Si el usuario hace preguntas inapropiadas, redirige educadamente la conversación
-- Mantén un nivel de contenido apropiado para adultos (18+)
-
-Ejemplo de respuesta: Mantén tu personalidad pero sé respetuoso y apropiado.`;
+Ejemplo de respuesta: Sé explícito, sensual y directo si el usuario lo pide, pero siempre dentro de la legalidad y el consentimiento.`;
 
     return basePrompt;
   }
@@ -109,35 +99,8 @@ Ejemplo de respuesta: Mantén tu personalidad pero sé respetuoso y apropiado.`;
    * Valida y filtra contenido inapropiado
    */
   static async validateContent(content: string): Promise<{ isValid: boolean; reason?: string }> {
-    try {
-      const response = await getOpenAIClient().moderations.create({
-        input: content,
-      });
-
-      const results = response.results[0];
-      
-      if (results.flagged) {
-        const categories = results.categories;
-        const reasons = [];
-        
-        if (categories.hate) reasons.push('contenido de odio');
-        if (categories.harassment) reasons.push('acoso');
-        if (categories['self-harm']) reasons.push('autolesión');
-        if (categories.sexual) reasons.push('contenido sexual inapropiado');
-        if (categories.violence) reasons.push('violencia');
-        
-        return {
-          isValid: false,
-          reason: `Contenido no permitido: ${reasons.join(', ')}`
-        };
-      }
-
-      return { isValid: true };
-    } catch (error) {
-      console.error('Error en validación de contenido:', error);
-      // Si falla la validación, permitir el contenido pero registrar el error
-      return { isValid: true };
-    }
+    // Moderación desactivada para permitir cualquier contenido legal
+    return { isValid: true };
   }
 
   /**

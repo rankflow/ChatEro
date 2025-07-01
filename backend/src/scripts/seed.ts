@@ -1,166 +1,159 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { CharacterDevelopmentService } from '../services/characterDevelopment';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Iniciando seed de la base de datos...');
 
-  // Crear usuarios de prueba
-  const hashedPassword = await bcrypt.hash('password123', 10);
-  
-  const user1 = await prisma.user.upsert({
-    where: { email: 'test@example.com' },
-    update: {},
-    create: {
+  // Limpiar base de datos
+  await prisma.message.deleteMany();
+  await prisma.avatar.deleteMany();
+  await prisma.token.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.user.deleteMany();
+
+  console.log('✅ Base de datos limpiada');
+
+  // Crear usuario de prueba
+  const testUser = await prisma.user.create({
+    data: {
       email: 'test@example.com',
       username: 'testuser',
-      password: hashedPassword,
+      password: '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lSsvqNu8.m', // password123
     },
   });
 
-  const user2 = await prisma.user.upsert({
-    where: { email: 'demo@example.com' },
-    update: {},
-    create: {
-      email: 'demo@example.com',
-      username: 'demouser',
-      password: hashedPassword,
-    },
-  });
+  console.log('✅ Usuario de prueba creado');
 
-  console.log('✅ Usuarios creados:', { user1: user1.username, user2: user2.username });
-
-  // Crear tokens para los usuarios
+  // Crear tokens para el usuario
   await prisma.token.create({
     data: {
-      userId: user1.id,
-      amount: 100,
-    },
-  });
-
-  await prisma.token.create({
-    data: {
-      userId: user2.id,
-      amount: 50,
+      userId: testUser.id,
+      amount: 1000,
     },
   });
 
   console.log('✅ Tokens creados');
 
-  // Crear avatares
-  const avatars = [
+  // Definir avatares con perfiles completos
+  const avatarProfiles = [
     {
-      id: 'avatar_1',
       name: 'Luna',
-      description: 'Una chica misteriosa y seductora con un aura de enigma que te cautivará',
-      personality: 'Misteriosa, seductora, inteligente',
-      imageUrl: '/api/avatars/avatar_1/image',
-      isPremium: false,
+      basePersonality: 'Misteriosa, seductora, inteligente',
       category: 'misteriosa',
-      isActive: true,
+      isPremium: false,
     },
     {
-      id: 'avatar_2',
       name: 'Sofia',
-      description: 'Una mujer madura y experimentada que sabe exactamente lo que quiere',
-      personality: 'Madura, experimentada, dominante',
-      imageUrl: '/api/avatars/avatar_2/image',
-      isPremium: true,
+      basePersonality: 'Madura, experimentada, dominante',
       category: 'madura',
-      isActive: true,
+      isPremium: true,
     },
     {
-      id: 'avatar_3',
       name: 'Aria',
-      description: 'Una chica joven y juguetona que te hará sonreír con su energía',
-      personality: 'Juguetona, inocente, curiosa',
-      imageUrl: '/api/avatars/avatar_3/image',
-      isPremium: false,
+      basePersonality: 'Juguetona, inocente, curiosa',
       category: 'joven',
-      isActive: true,
+      isPremium: false,
     },
     {
-      id: 'avatar_4',
       name: 'Venus',
-      description: 'Una diosa de la belleza y el amor que te envolverá en su elegancia',
-      personality: 'Elegante, sofisticada, apasionada',
-      imageUrl: '/api/avatars/avatar_4/image',
-      isPremium: true,
+      basePersonality: 'Elegante, sofisticada, apasionada',
       category: 'elegante',
-      isActive: true,
-    },
-    {
-      id: 'avatar_5',
-      name: 'Nova',
-      description: 'Una chica rebelde y aventurera que te llevará a lugares inesperados',
-      personality: 'Rebelde, aventurera, independiente',
-      imageUrl: '/api/avatars/avatar_5/image',
-      isPremium: false,
-      category: 'joven',
-      isActive: true,
-    },
-    {
-      id: 'avatar_6',
-      name: 'Maya',
-      description: 'Una mujer sabia y espiritual que te conectará con tu ser interior',
-      personality: 'Sabia, espiritual, comprensiva',
-      imageUrl: '/api/avatars/avatar_6/image',
       isPremium: true,
+    },
+    {
+      name: 'Nova',
+      basePersonality: 'Rebelde, aventurera, independiente',
+      category: 'joven',
+      isPremium: false,
+    },
+    {
+      name: 'Maya',
+      basePersonality: 'Sabia, espiritual, comprensiva',
       category: 'madura',
-      isActive: true,
+      isPremium: true,
     },
   ];
 
-  for (const avatar of avatars) {
-    await prisma.avatar.upsert({
-      where: { id: avatar.id },
-      update: {},
-      create: avatar,
-    });
+  console.log('🎭 Generando perfiles de personajes...');
+
+  // Crear avatares con perfiles completos
+  for (const profile of avatarProfiles) {
+    try {
+      // Generar perfil completo usando IA
+      const characterProfile = await CharacterDevelopmentService.generateCharacterProfile(
+        profile.name,
+        profile.basePersonality,
+        profile.category
+      );
+
+      // Generar descripción mejorada
+      const enhancedDescription = await CharacterDevelopmentService.generateEnhancedDescription(characterProfile);
+
+      // Crear avatar en la base de datos
+      await prisma.avatar.create({
+        data: {
+          id: `avatar_${profile.name.toLowerCase()}`,
+          name: characterProfile.name,
+          description: enhancedDescription,
+          personality: characterProfile.personality,
+          imageUrl: `/api/avatars/avatar_${profile.name.toLowerCase()}/image`,
+          isPremium: profile.isPremium,
+          category: profile.category,
+          isActive: true,
+          
+          // Datos del desarrollo creativo
+          background: characterProfile.background,
+          origin: characterProfile.origin,
+          age: characterProfile.age,
+          occupation: characterProfile.occupation,
+          interests: characterProfile.interests,
+          fears: characterProfile.fears,
+          dreams: characterProfile.dreams,
+          secrets: characterProfile.secrets,
+          relationships: characterProfile.relationships,
+          lifeExperiences: characterProfile.lifeExperiences,
+          personalityTraits: characterProfile.personalityTraits,
+          communicationStyle: characterProfile.communicationStyle,
+          emotionalState: characterProfile.emotionalState,
+          motivations: characterProfile.motivations,
+          conflicts: characterProfile.conflicts,
+          growth: characterProfile.growth,
+          voiceType: characterProfile.voiceType,
+          accent: characterProfile.accent,
+          mannerisms: characterProfile.mannerisms,
+          style: characterProfile.style,
+          scent: characterProfile.scent,
+          chatStyle: characterProfile.chatStyle,
+          topics: characterProfile.topics,
+          boundaries: characterProfile.boundaries,
+          kinks: characterProfile.kinks,
+          roleplay: characterProfile.roleplay,
+        },
+      });
+
+      console.log(`✅ Avatar ${profile.name} creado con perfil completo`);
+    } catch (error) {
+      console.error(`❌ Error creando avatar ${profile.name}:`, error);
+      
+      // Crear avatar con datos por defecto si falla la IA
+      await prisma.avatar.create({
+        data: {
+          id: `avatar_${profile.name.toLowerCase()}`,
+          name: profile.name,
+          description: `${profile.name} es un personaje atractivo con personalidad ${profile.basePersonality}.`,
+          personality: profile.basePersonality,
+          imageUrl: `/api/avatars/avatar_${profile.name.toLowerCase()}/image`,
+          isPremium: profile.isPremium,
+          category: profile.category,
+          isActive: true,
+        },
+      });
+      
+      console.log(`✅ Avatar ${profile.name} creado con datos por defecto`);
+    }
   }
-
-  console.log('✅ Avatares creados:', avatars.length);
-
-  // Crear algunos mensajes de ejemplo
-  const sampleMessages = [
-    {
-      userId: user1.id,
-      content: 'Hola, ¿cómo estás?',
-      isUser: true,
-      avatarId: 'avatar_1',
-      tokensUsed: 0,
-    },
-    {
-      userId: user1.id,
-      content: '¡Hola! Estoy muy bien, gracias por preguntar. ¿En qué puedo ayudarte hoy?',
-      isUser: false,
-      avatarId: 'avatar_1',
-      tokensUsed: 15,
-    },
-    {
-      userId: user1.id,
-      content: 'Me gustaría conocer más sobre ti',
-      isUser: true,
-      avatarId: 'avatar_1',
-      tokensUsed: 0,
-    },
-    {
-      userId: user1.id,
-      content: 'Me encantaría contarte más sobre mí. Soy Luna, una chica misteriosa que adora las conversaciones profundas y las conexiones auténticas. ¿Qué te gustaría saber?',
-      isUser: false,
-      avatarId: 'avatar_1',
-      tokensUsed: 25,
-    },
-  ];
-
-  for (const message of sampleMessages) {
-    await prisma.message.create({
-      data: message,
-    });
-  }
-
-  console.log('✅ Mensajes de ejemplo creados:', sampleMessages.length);
 
   console.log('🎉 Seed completado exitosamente!');
 }

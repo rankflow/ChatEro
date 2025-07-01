@@ -115,4 +115,26 @@ export default async function authRoutes(fastify: FastifyInstance) {
       user: request.user
     });
   });
+
+  // Obtener tokens del usuario
+  fastify.get('/tokens', {
+    preHandler: [fastify.authenticate]
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      // TODO: Implementar lógica para obtener tokens de la base de datos
+      // Por ahora, simulamos que el usuario tiene 100 tokens
+      
+      return reply.send({
+        success: true,
+        tokens: 100
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({
+        success: false,
+        message: 'Error obteniendo tokens',
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
 } 

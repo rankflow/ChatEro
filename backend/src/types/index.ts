@@ -1,5 +1,12 @@
 // Tipos para el backend
 
+// Declaración de módulo para extender FastifyInstance
+declare module 'fastify' {
+  interface FastifyInstance {
+    authenticate: (request: any, reply: any) => Promise<void>;
+  }
+}
+
 export interface User {
   id: string;
   email: string;
@@ -17,6 +24,39 @@ export interface Avatar {
   isPremium: boolean;
   category: string;
   isActive: boolean;
+  
+  // Desarrollo creativo del personaje
+  background?: string;
+  origin?: string;
+  age?: number;
+  occupation?: string;
+  interests?: string;
+  fears?: string;
+  dreams?: string;
+  secrets?: string;
+  relationships?: string;
+  lifeExperiences?: string;
+  personalityTraits?: string;
+  communicationStyle?: string;
+  emotionalState?: string;
+  motivations?: string;
+  conflicts?: string;
+  growth?: string;
+  
+  // Metadatos del personaje
+  voiceType?: string;
+  accent?: string;
+  mannerisms?: string;
+  style?: string;
+  scent?: string;
+  
+  // Configuración del chat
+  chatStyle?: string;
+  topics?: string;
+  boundaries?: string;
+  kinks?: string;
+  roleplay?: string;
+  
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { OpenAIService, ChatContext } from '../services/openai.js';
+import { MistralService, ChatContext } from '../services/mistral.js';
 
 // Esquemas de validación
 const chatMessageSchema = z.object({
@@ -30,7 +30,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       const userId = request.user?.userId;
       
       // Validar contenido del usuario
-      const contentValidation = await OpenAIService.validateContent(message);
+      const contentValidation = await MistralService.validateContent(message);
       if (!contentValidation.isValid) {
         return reply.status(400).send({
           success: false,
@@ -61,15 +61,15 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         // Aquí se cargaría el historial real desde la base de datos
       ];
 
-      // Preparar contexto para OpenAI
+      // Preparar contexto para Mistral
       const chatContext: ChatContext = {
         avatar: mockAvatar,
         conversationHistory,
         userPreferences: context
       };
 
-      // Generar respuesta con OpenAI
-      const aiResponse = await OpenAIService.generateChatResponse(message, chatContext);
+      // Generar respuesta con Mistral
+      const aiResponse = await MistralService.generateChatResponse(message, chatContext);
       
       // TODO: Guardar mensaje y respuesta en base de datos
       
@@ -83,12 +83,12 @@ export default async function chatRoutes(fastify: FastifyInstance) {
     } catch (error) {
       fastify.log.error(error);
       
-      // Si hay error con OpenAI, devolver respuesta de fallback
-      if (error instanceof Error && error.message.includes('OpenAI')) {
+      // Si hay error con Mistral, devolver respuesta de fallback
+      if (error instanceof Error && error.message.includes('Mistral')) {
         return reply.status(503).send({
           success: false,
           message: 'El servicio de IA está temporalmente no disponible. Por favor, intenta de nuevo en unos momentos.',
-          error: 'OpenAI service unavailable'
+          error: 'Mistral service unavailable'
         });
       }
       

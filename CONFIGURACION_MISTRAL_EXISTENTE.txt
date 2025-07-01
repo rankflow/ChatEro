@@ -1,0 +1,165 @@
+CONFIGURACIÓN MISTRAL CON OLLAMA YA INSTALADO
+==============================================
+
+Si ya tienes Ollama instalado en tu servidor virtual Linux, sigue estos pasos para configurar Mistral y conectarlo a tu backend.
+
+PASO 1: VERIFICAR SI OLLAMA ESTÁ INSTALADO
+------------------------------------------
+
+1. Conecta a tu servidor virtual Linux:
+   ssh usuario@IP_DE_TU_PC
+
+2. Verifica si Ollama está instalado:
+   ollama --version
+
+3. Si NO está instalado (da error "command not found"), instálalo:
+   curl -fsSL https://ollama.ai/install.sh | sh
+   
+   Luego verifica la instalación:
+   ollama --version
+
+4. Si SÍ está instalado, continúa con el siguiente paso.
+
+PASO 2: VERIFICAR OLLAMA Y DESCARGAR MISTRAL
+--------------------------------------------
+
+1. Verifica que Ollama está funcionando:
+   ollama --version
+   ollama list
+
+2. Descarga el modelo Mistral (elige uno):
+   
+   # Mistral 7B básico (más rápido):
+   ollama pull mistral
+   
+   # O Mistral 7B Instruct (mejor para chat):
+   ollama pull mistral:instruct
+   
+   # O Mistral 7B OpenOrca (muy bueno para contenido adulto):
+   ollama pull mistral:openorca
+
+3. Verifica que se descargó:
+   ollama list
+
+PASO 3: CONFIGURAR ACCESO REMOTO
+--------------------------------
+
+1. Verifica si Ollama ya está configurado para acceso remoto:
+   sudo systemctl status ollama
+
+2. Si no está corriendo como servicio, configúralo:
+   sudo systemctl enable ollama
+   sudo systemctl start ollama
+
+3. Configura Ollama para aceptar conexiones remotas:
+   sudo mkdir -p /etc/ollama
+   sudo nano /etc/ollama/ollama.conf
+
+4. Añade esta configuración:
+   OLLAMA_HOST=0.0.0.0:11434
+   OLLAMA_ORIGINS=*
+
+5. Reinicia el servicio:
+   sudo systemctl restart ollama
+
+PASO 4: CONFIGURAR FIREWALL
+---------------------------
+
+1. Abre el puerto 11434:
+   sudo ufw allow 11434
+   
+   O si usas iptables:
+   sudo iptables -A INPUT -p tcp --dport 11434 -j ACCEPT
+
+2. Verifica que el puerto está abierto:
+   sudo netstat -tlnp | grep 11434
+
+PASO 5: OBTENER LA IP DE TU PC
+------------------------------
+
+1. En tu servidor virtual Linux, ejecuta:
+   ip addr show
+   
+   O
+   
+   hostname -I
+
+2. Anota la IP (será algo como 192.168.1.XXX)
+
+PASO 6: PROBAR LA CONEXIÓN
+--------------------------
+
+1. Prueba localmente en el servidor:
+   curl -X POST http://localhost:11434/api/generate -d '{
+     "model": "mistral",
+     "prompt": "Hola, ¿cómo estás?",
+     "stream": false
+   }'
+
+2. Si funciona, prueba desde tu Mac (reemplaza IP_DE_TU_PC con la IP real):
+   curl -X POST http://IP_DE_TU_PC:11434/api/generate -d '{
+     "model": "mistral",
+     "prompt": "Hola, ¿cómo estás?",
+     "stream": false
+   }'
+
+PASO 7: VERIFICAR MODELOS DISPONIBLES
+-------------------------------------
+
+1. Verifica qué modelos tienes disponibles:
+   curl http://IP_DE_TU_PC:11434/api/tags
+
+2. Deberías ver algo como:
+   {
+     "models": [
+       {
+         "name": "mistral",
+         "modified_at": "2024-01-01T00:00:00Z",
+         "size": 4100000000
+       }
+     ]
+   }
+
+PASO 8: ACTUALIZAR CONFIGURACIÓN EN EL BACKEND
+----------------------------------------------
+
+1. En tu backend, verifica que el archivo .env tiene:
+   MISTRAL_API_URL=http://IP_DE_TU_PC:11434/api
+   MISTRAL_MODEL=mistral
+
+2. Reinicia el backend para aplicar los cambios:
+   npm run dev
+
+INFORMACIÓN QUE NECESITO
+========================
+
+Una vez que completes estos pasos, necesito:
+
+1. La IP de tu PC (del paso 5)
+2. El resultado del comando: curl http://IP_DE_TU_PC:11434/api/tags
+3. Confirmación de que el test de conexión funciona
+4. Cualquier error que encuentres
+
+COMANDOS RÁPIDOS DE VERIFICACIÓN
+================================
+
+# Verificar estado de Ollama
+sudo systemctl status ollama
+
+# Verificar puerto
+sudo netstat -tlnp | grep 11434
+
+# Verificar modelos
+ollama list
+
+# Probar conexión local
+curl http://localhost:11434/api/tags
+
+# Probar generación local
+curl -X POST http://localhost:11434/api/generate -d '{
+  "model": "mistral",
+  "prompt": "Test",
+  "stream": false
+}'
+
+¿En qué paso estás y qué resultado obtienes? 
