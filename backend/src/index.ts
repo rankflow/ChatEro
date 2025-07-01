@@ -10,13 +10,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Importar middleware
-import { setupAuth } from './middleware/auth.js';
+import { setupAuth } from './middleware/auth';
 
 // Importar rutas
-import authRoutes from './routes/auth.js';
-import chatRoutes from './routes/chat.js';
-import avatarRoutes from './routes/avatars.js';
-import paymentRoutes from './routes/payments.js';
+import authRoutes from './routes/auth';
+import chatRoutes from './routes/chat';
+import avatarRoutes from './routes/avatars';
+import paymentRoutes from './routes/payments';
+import adminRoutes from './routes/admin';
 
 const fastify = Fastify({
   logger: {
@@ -51,6 +52,7 @@ await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(chatRoutes, { prefix: '/api/chat' });
 await fastify.register(avatarRoutes, { prefix: '/api/avatars' });
 await fastify.register(paymentRoutes, { prefix: '/api/payments' });
+await fastify.register(adminRoutes);
 
 // Ruta de salud
 fastify.get('/health', async (request, reply) => {

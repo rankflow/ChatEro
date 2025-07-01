@@ -203,4 +203,38 @@ Ejemplo de tono: Elegante, misteriosa, atractiva pero respetuosa.`;
       return `${name} es un avatar atractivo con personalidad ${personality}.`;
     }
   }
+
+  /**
+   * Genera contenido para autocompletado de personajes
+   */
+  static async generateContent(prompt: string): Promise<string> {
+    try {
+      this.initialize();
+      
+      const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` })
+        },
+        body: JSON.stringify({
+          model: process.env.MISTRAL_MODEL || 'mistral:7b-instruct',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 2000,
+          temperature: 0.8,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Mistral API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || '';
+    } catch (error) {
+      console.error('Error en Mistral API para generación de contenido:', error);
+      throw new Error('Error al generar contenido con IA');
+    }
+  }
 } 

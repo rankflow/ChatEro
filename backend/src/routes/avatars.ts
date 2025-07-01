@@ -1,56 +1,21 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CharacterDevelopmentService } from '../services/characterDevelopment';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export default async function avatarRoutes(fastify: FastifyInstance) {
   // Obtener lista de avatares disponibles
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // TODO: Implementar obtención desde base de datos
-      // Por ahora, simulamos los avatares
-      
-      const mockAvatars = [
-        {
-          id: 'avatar_1',
-          name: 'Luna',
-          description: 'Una chica misteriosa y seductora',
-          personality: 'Misteriosa, seductora, inteligente',
-          imageUrl: '/api/avatars/avatar_1/image',
-          isPremium: false,
-          category: 'misteriosa'
-        },
-        {
-          id: 'avatar_2',
-          name: 'Sofia',
-          description: 'Una mujer madura y experimentada',
-          personality: 'Madura, experimentada, dominante',
-          imageUrl: '/api/avatars/avatar_2/image',
-          isPremium: true,
-          category: 'madura'
-        },
-        {
-          id: 'avatar_3',
-          name: 'Aria',
-          description: 'Una chica joven y juguetona',
-          personality: 'Juguetona, inocente, curiosa',
-          imageUrl: '/api/avatars/avatar_3/image',
-          isPremium: false,
-          category: 'joven'
-        },
-        {
-          id: 'avatar_4',
-          name: 'Venus',
-          description: 'Una diosa de la belleza y el amor',
-          personality: 'Elegante, sofisticada, apasionada',
-          imageUrl: '/api/avatars/avatar_4/image',
-          isPremium: true,
-          category: 'elegante'
-        }
-      ];
-      
+      const avatars = await prisma.avatar.findMany({
+        where: { isActive: true },
+        orderBy: { id: 'asc' }
+      });
       return reply.send({
         success: true,
-        avatars: mockAvatars,
-        total: mockAvatars.length
+        avatars,
+        total: avatars.length
       });
     } catch (error) {
       fastify.log.error(error);
