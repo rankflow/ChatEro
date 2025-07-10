@@ -30,68 +30,14 @@ export default function AvatarsPage() {
   ];
 
   useEffect(() => {
-    // Simular carga de datos
-    const mockAvatars: Avatar[] = [
-      {
-        id: 'avatar_1',
-        name: 'Luna',
-        description: 'Una chica misteriosa y seductora',
-        personality: 'Misteriosa, seductora, inteligente',
-        imageUrl: 'https://via.placeholder.com/300x400/FF6B9D/FFFFFF?text=Luna',
-        isPremium: false,
-        category: 'misteriosa'
-      },
-      {
-        id: 'avatar_2',
-        name: 'Sofia',
-        description: 'Una mujer madura y experimentada',
-        personality: 'Madura, experimentada, dominante',
-        imageUrl: 'https://via.placeholder.com/300x400/9B59B6/FFFFFF?text=Sofia',
-        isPremium: true,
-        category: 'madura'
-      },
-      {
-        id: 'avatar_3',
-        name: 'Aria',
-        description: 'Una chica joven y juguetona',
-        personality: 'Juguetona, inocente, curiosa',
-        imageUrl: 'https://via.placeholder.com/300x400/3498DB/FFFFFF?text=Aria',
-        isPremium: false,
-        category: 'joven'
-      },
-      {
-        id: 'avatar_4',
-        name: 'Venus',
-        description: 'Una diosa de la belleza y el amor',
-        personality: 'Elegante, sofisticada, apasionada',
-        imageUrl: 'https://via.placeholder.com/300x400/E74C3C/FFFFFF?text=Venus',
-        isPremium: true,
-        category: 'elegante'
-      },
-      {
-        id: 'avatar_5',
-        name: 'Nova',
-        description: 'Una chica rebelde y aventurera',
-        personality: 'Rebelde, aventurera, independiente',
-        imageUrl: 'https://via.placeholder.com/300x400/F39C12/FFFFFF?text=Nova',
-        isPremium: false,
-        category: 'joven'
-      },
-      {
-        id: 'avatar_6',
-        name: 'Maya',
-        description: 'Una mujer sabia y espiritual',
-        personality: 'Sabia, espiritual, comprensiva',
-        imageUrl: 'https://via.placeholder.com/300x400/27AE60/FFFFFF?text=Maya',
-        isPremium: true,
-        category: 'madura'
-      }
-    ];
-
-    setTimeout(() => {
-      setAvatars(mockAvatars);
-      setLoading(false);
-    }, 1000);
+    setLoading(true);
+    fetch('http://localhost:3001/api/avatars')
+      .then(res => res.json())
+      .then(data => {
+        setAvatars(data.avatars || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const filteredAvatars = avatars.filter(avatar => {
