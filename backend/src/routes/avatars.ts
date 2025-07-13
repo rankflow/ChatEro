@@ -63,15 +63,28 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Obtener imagen del avatar (placeholder)
+  // Obtener imagen del avatar
   fastify.get('/:id/image', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       
-      // TODO: Implementar obtención de imagen real desde S3/Wasabi
-      // Por ahora, redirigimos a una imagen placeholder
+      // Mapear IDs de avatar a imágenes específicas
+      const avatarImages: { [key: string]: string } = {
+        'avatar_1': 'https://via.placeholder.com/400x600/FF6B9D/FFFFFF?text=Luna',
+        'avatar_2': 'https://via.placeholder.com/400x600/FF8C42/FFFFFF?text=Sofia',
+        'avatar_3': 'https://via.placeholder.com/400x600/9B59B6/FFFFFF?text=Aria',
+        'avatar_4': 'https://via.placeholder.com/400x600/E74C3C/FFFFFF?text=Venus',
+        'avatar_luna': 'https://via.placeholder.com/400x600/FF6B9D/FFFFFF?text=Luna',
+        'avatar_sofia': 'https://via.placeholder.com/400x600/FF8C42/FFFFFF?text=Sofia',
+        'avatar_aria': 'https://via.placeholder.com/400x600/9B59B6/FFFFFF?text=Aria',
+        'avatar_venus': 'https://via.placeholder.com/400x600/E74C3C/FFFFFF?text=Venus',
+        'avatar_maya': 'https://via.placeholder.com/400x600/3498DB/FFFFFF?text=Maya',
+        'avatar_nova': 'https://via.placeholder.com/400x600/2ECC71/FFFFFF?text=Nova'
+      };
       
-      return reply.redirect('https://via.placeholder.com/400x600/FF6B9D/FFFFFF?text=Avatar+Placeholder');
+      const imageUrl = avatarImages[id] || 'https://via.placeholder.com/400x600/95A5A6/FFFFFF?text=Avatar';
+      
+      return reply.redirect(imageUrl);
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({

@@ -16,10 +16,26 @@ export interface LoginResponse {
   };
 }
 
+export interface ConversationMemory {
+  summary?: string;
+  turnCount?: number;
+  lastUpdated?: string;
+  userRevelations?: string[];
+  dominantTone?: string;
+  avatarIntroduced?: boolean;
+  boundariesDiscussed?: string[];
+  fantasiesExplored?: string[];
+}
+
 export interface ChatMessage {
   message: string;
   avatarId?: string;
   context?: string;
+  conversationMemory?: ConversationMemory;
+  conversationHistory?: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+  }>;
 }
 
 export interface ChatResponse {
@@ -28,6 +44,7 @@ export interface ChatResponse {
   timestamp: string;
   messageId: string;
   tokensUsed: number;
+  conversationMemory?: ConversationMemory;
 }
 
 export interface Avatar {

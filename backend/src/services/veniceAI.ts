@@ -30,14 +30,14 @@ export async function getVeniceResponse(messages: any[]): Promise<string> {
       'Content-Type': 'application/json',
     };
 
-    const response = await axios.post(
-      `${VENICE_API_URL}/chat/completions`,
-      payload,
-      {
-        headers,
-        timeout: 30000
-      }
-    );
+          const response = await axios.post(
+        `${VENICE_API_URL}/chat/completions`,
+        payload,
+        {
+          headers,
+          timeout: 60000 // Aumentado a 60 segundos
+        }
+      );
 
     if (response.data.choices && response.data.choices.length > 0) {
       const content = response.data.choices[0].message.content;

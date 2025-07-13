@@ -2,25 +2,19 @@
 
 ## 📋 Descripción
 
-El sistema de prompts ha sido refactorizado para mejorar claridad, rendimiento narrativo y mantenimiento. Se eliminó la jerarquía innecesaria de 3 niveles y se implementó un diseño más funcional de 2 niveles.
+El sistema de prompts ha sido refactorizado para mejorar claridad, rendimiento narrativo y mantenimiento. Se eliminó la jerarquía innecesaria y se implementó un diseño simple y eficiente de un único prompt por avatar.
 
 ## 🏗️ Nueva Arquitectura
 
-### **Nivel 1: Prompt Base Global**
-- **Archivo**: `promptBase.txt`
-- **Uso**: Común a todos los chats (con o sin avatar)
-- **Contenido**: Comportamiento erótico, tono, límites legales, interpretación contextual del consentimiento
-
-### **Nivel 2: Prompt Ligero por Avatar**
+### **Sistema de Un Solo Prompt por Avatar**
 - **Ubicación**: `avatars/{avatarId}.txt`
-- **Uso**: Solo si hay avatar seleccionado
-- **Contenido**: Campos clave (nombre, edad opcional, personalidad, descripción física, backstory breve)
+- **Uso**: Cada avatar carga SOLO su prompt específico
+- **Contenido**: Prompt completo e independiente con todas las instrucciones necesarias
 
 ## 📁 Estructura de Archivos
 
 ```
 src/prompts/
-├── promptBase.txt          # Prompt base global
 ├── README.md              # Esta documentación
 └── avatars/               # Prompts específicos por avatar
     ├── luna.txt           # Luna - Misteriosa y seductora
@@ -35,18 +29,19 @@ src/prompts/
 
 ```typescript
 private static async buildSystemPrompt(avatarId?: string): Promise<string> {
-  const basePath = path.resolve(__dirname, '../prompts/promptBase.txt');
-  const basePrompt = await fs.readFile(basePath, 'utf-8');
+  if (!avatarId) {
+    return 'Por favor, selecciona un avatar para comenzar la conversación.';
+  }
 
-  if (!avatarId) return basePrompt;
-
-  const avatarPath = path.resolve(__dirname, `../prompts/avatars/${avatarId}.txt`);
+  const fileName = this.mapAvatarIdToFileName(avatarId);
+  const avatarPath = path.resolve(__dirname, `../prompts/avatars/${fileName}.txt`);
+  
   try {
     const avatarPrompt = await fs.readFile(avatarPath, 'utf-8');
-    return `${basePrompt.trim()}\n\n${avatarPrompt.trim()}`;
+    return avatarPrompt.trim();
   } catch (err) {
     console.warn(`[buildSystemPrompt] Avatar prompt not found for: ${avatarId}`);
-    return basePrompt;
+    return 'Por favor, selecciona un avatar válido para comenzar la conversación.';
   }
 }
 ```
@@ -95,29 +90,31 @@ TEMAS FAVORITOS: [Temas de conversación preferidos]
 
 ### Sin Avatar
 ```typescript
-const prompt = await buildSystemPrompt(); // Solo prompt base
+const prompt = await buildSystemPrompt(); // Mensaje de error
 ```
 
 ### Con Avatar
 ```typescript
-const prompt = await buildSystemPrompt('luna'); // Base + Luna
+const prompt = await buildSystemPrompt('luna'); // Solo Luna
 ```
 
 ## 🔄 Migración
 
 El sistema anterior usaba:
 - 3 niveles de prompts (general, básico, completo)
+- Prompt base global + prompts específicos
+- Concatenación de prompts
 - Prompts extensos y repetitivos
-- Lógica compleja en el código
 
 El nuevo sistema:
-- 2 niveles funcionales
-- Prompts ligeros y efectivos
-- Archivos separados para mantenimiento modular
+- Un único prompt por avatar
+- Prompts completos e independientes
+- Sin concatenación ni prompt base
+- Sistema más simple y directo
 
 ## 📊 Estadísticas
 
-- **Prompt base**: ~1,052 caracteres
-- **Prompts de avatar**: ~1,100-1,300 caracteres
-- **Prompt final**: ~2,100-2,400 caracteres
-- **Reducción de complejidad**: ~60% 
+- **Prompts de avatar**: ~1,500-2,000 caracteres (completos)
+- **Sin prompt base**: Eliminado
+- **Sin concatenación**: Cada avatar es independiente
+- **Reducción de complejidad**: ~80% 

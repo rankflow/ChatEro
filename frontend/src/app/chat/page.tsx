@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { apiService, ChatMessage, ChatResponse, Avatar } from '../../services/api';
+import { apiService, ChatMessage, ChatResponse, Avatar, ConversationMemory } from '../../services/api';
 
 interface Message {
   id: string;
@@ -18,6 +18,7 @@ export default function ChatPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null);
   const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [userTokens, setUserTokens] = useState(0);
+  const [conversationMemory, setConversationMemory] = useState<ConversationMemory | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,9 +94,17 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
+      // Convertir mensajes del frontend al formato del backend
+      const conversationHistory = messages.map(msg => ({
+        role: msg.isUser ? 'user' as const : 'assistant' as const,
+        content: msg.content
+      }));
+
       const chatMessage: ChatMessage = {
         message: inputMessage,
         avatarId: selectedAvatar?.id,
+        conversationMemory: conversationMemory || {}, // Enviar objeto vacío en lugar de undefined
+        conversationHistory: conversationHistory, // Enviar historial
       };
 
       const response: ChatResponse = await apiService.sendMessage(chatMessage);
@@ -110,6 +119,12 @@ export default function ChatPage() {
         };
 
         setMessages(prev => [...prev, aiMessage]);
+        
+        // Actualizar memoria contextual si se devuelve
+        if (response.conversationMemory) {
+          setConversationMemory(response.conversationMemory);
+          console.log('[MEMORY] Memoria actualizada:', response.conversationMemory);
+        }
         
         // Actualizar tokens del usuario
         await loadUserTokens();
@@ -140,6 +155,8 @@ export default function ChatPage() {
       const response = await apiService.clearChatHistory();
       if (response.success) {
         setMessages([]);
+        setConversationMemory(undefined); // Limpiar memoria también
+        console.log('[MEMORY] Memoria limpiada');
       }
     } catch (error) {
       console.error('Error limpiando historial:', error);
@@ -191,6 +208,13 @@ export default function ChatPage() {
               <div className="bg-white/10 rounded-lg px-3 py-1">
                 <span className="text-white text-sm">Tokens: {userTokens}</span>
               </div>
+              {conversationMemory && (
+                <div className="bg-blue-500/20 rounded-lg px-3 py-1">
+                  <span className="text-blue-200 text-xs">
+                    Memoria: {conversationMemory.turnCount || 0} turnos
+                  </span>
+                </div>
+              )}
               <button
                 onClick={handleClearHistory}
                 className="bg-red-500/20 hover:bg-red-500/30 text-red-200 px-3 py-1 rounded-lg text-sm transition-all duration-300"
