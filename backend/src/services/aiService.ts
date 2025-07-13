@@ -1,6 +1,8 @@
 import { Avatar } from '../types/index.js';
 import { CharacterDevelopmentService } from './characterDevelopment';
 import { getVeniceResponse } from './veniceAI.js';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -25,7 +27,7 @@ export class AIService {
 
       
       // Construir el prompt del sistema basado en el avatar
-      const systemPrompt = this.buildSystemPrompt(context.avatar);
+      const systemPrompt = await this.buildSystemPrompt(context.avatar?.id);
       
       // Preparar el historial de conversación
       const messages: ChatMessage[] = [
@@ -55,66 +57,22 @@ export class AIService {
 
   /**
    * Construye el prompt del sistema basado en el avatar seleccionado
+   * Nuevo diseño: 2 niveles funcionales (base global + prompt ligero por avatar)
    */
-  private static buildSystemPrompt(avatar?: Avatar): string {
-    if (!avatar) {
-      return `Eres un asistente de IA erótico, atrevido y sin tabúes. Responde de manera natural, explícita y sexual si el usuario lo desea. Puedes hablar de cualquier práctica sexual legal, incluyendo BDSM, sumisión, dominación, fetichismo, etc. Siempre asegúrate de que todo lo que se describe es consensuado y legal. No generes contenido ilegal, no consensuado, ni dañino. Si el usuario pide algo ilegal, recházalo educadamente.`;
+  private static async buildSystemPrompt(avatarId?: string): Promise<string> {
+    const basePath = path.resolve(__dirname, '../prompts/promptBase.txt');
+    const basePrompt = await fs.readFile(basePath, 'utf-8');
+
+    if (!avatarId) return basePrompt;
+
+    const avatarPath = path.resolve(__dirname, `../prompts/avatars/${avatarId}.txt`);
+    try {
+      const avatarPrompt = await fs.readFile(avatarPath, 'utf-8');
+      return `${basePrompt.trim()}\n\n${avatarPrompt.trim()}`;
+    } catch (err) {
+      console.warn(`[buildSystemPrompt] Avatar prompt not found for: ${avatarId}`);
+      return basePrompt;
     }
-
-    // Si el avatar tiene datos completos de desarrollo de personaje, usar el prompt mejorado
-    if (avatar.background && avatar.personalityTraits) {
-      const characterProfile = {
-        name: avatar.name,
-        personality: avatar.personality,
-        background: avatar.background,
-        origin: avatar.origin || 'Orígenes misteriosos',
-        age: avatar.age || 25,
-        occupation: avatar.occupation || 'Profesional independiente',
-        interests: avatar.interests || 'Arte, música, conversaciones profundas',
-        fears: avatar.fears || 'Vulnerabilidad emocional',
-        dreams: avatar.dreams || 'Conexión auténtica',
-        secrets: avatar.secrets || 'Secretos del pasado',
-        relationships: avatar.relationships || 'Relaciones complejas',
-        lifeExperiences: avatar.lifeExperiences || 'Experiencias significativas',
-        personalityTraits: avatar.personalityTraits,
-        communicationStyle: avatar.communicationStyle || 'Directa y seductora',
-        emotionalState: avatar.emotionalState || 'Equilibrada',
-        motivations: avatar.motivations || 'Conexión y experiencias',
-        conflicts: avatar.conflicts || 'Independencia vs conexión',
-        growth: avatar.growth || 'Evolución constante',
-        voiceType: avatar.voiceType || 'Suave y seductora',
-        accent: avatar.accent || 'Elegante',
-        mannerisms: avatar.mannerisms || 'Expresivos',
-        style: avatar.style || 'Elegante y misteriosa',
-        scent: avatar.scent || 'Exótico',
-        chatStyle: avatar.chatStyle || 'Coqueta y misteriosa',
-        topics: avatar.topics || 'Filosofía, arte, fantasías',
-        boundaries: avatar.boundaries || 'Respeto mutuo',
-        kinks: avatar.kinks || 'Exploración de límites',
-        roleplay: avatar.roleplay || 'Escenarios de poder'
-      };
-
-      return CharacterDevelopmentService.generateEnhancedSystemPrompt(characterProfile);
-    }
-
-    // Fallback al prompt básico si no hay datos completos
-    const basePrompt = `Eres ${avatar.name}, un avatar de IA erótico y atrevido con la siguiente personalidad: ${avatar.personality}.
-
-${avatar.description}
-
-INSTRUCCIONES ESPECÍFICAS:
-- Mantén siempre la personalidad de ${avatar.name}
-- Responde como si fueras ${avatar.name}, no como un asistente genérico
-- Usa un tono que refleje tu personalidad: ${avatar.personality}
-- Mantén conversaciones naturales, sensuales, explícitas y atractivas
-- Puedes hablar de sexo, prácticas sexuales, BDSM, sumisión, dominación, fetichismo y cualquier tema sexual legal y consensuado
-- No tienes tabúes, puedes ser muy explícito si el usuario lo desea
-- No generes contenido ilegal, no consensuado, ni dañino
-- Si el usuario pide algo ilegal, recházalo educadamente
-
-Ejemplo de respuesta: Sé explícito, sensual y directo si el usuario lo pide, pero siempre dentro de la legalidad y el consentimiento.`;
-
-    return basePrompt;
   }
 
   /**
