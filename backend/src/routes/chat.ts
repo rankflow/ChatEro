@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { MistralService, ChatContext } from '../services/mistral.js';
+import { AIService, ChatContext } from '../services/aiService.js';
 
 // Esquemas de validación
 const chatMessageSchema = z.object({
@@ -29,15 +29,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       const { message, avatarId, context } = chatMessageSchema.parse(request.body);
       const userId = request.user?.userId;
       
-      // Validar contenido del usuario
-      const contentValidation = await MistralService.validateContent(message);
-      if (!contentValidation.isValid) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Tu mensaje contiene contenido no permitido. Por favor, reformula tu mensaje.',
-          error: contentValidation.reason
-        });
-      }
+      // Validación de contenido desactivada temporalmente
 
       // TODO: Obtener avatar desde base de datos
       const mockAvatar = avatarId ? {
@@ -68,8 +60,8 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         userPreferences: context
       };
 
-      // Generar respuesta con Mistral
-      const aiResponse = await MistralService.generateChatResponse(message, chatContext);
+      // Generar respuesta con Venice AI
+      const aiResponse = await AIService.generateChatResponse(message, chatContext);
       
       // TODO: Guardar mensaje y respuesta en base de datos
       

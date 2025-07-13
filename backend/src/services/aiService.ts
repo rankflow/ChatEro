@@ -1,5 +1,6 @@
 import { Avatar } from '../types/index.js';
 import { CharacterDevelopmentService } from './characterDevelopment';
+import { getVeniceResponse } from './veniceAI.js';
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -12,24 +13,16 @@ export interface ChatContext {
   userPreferences?: string;
 }
 
-export class MistralService {
-  private static baseUrl: string;
-  private static apiKey: string;
-
-  static initialize() {
-    this.baseUrl = process.env.MISTRAL_BASE_URL || 'http://localhost:11434';
-    this.apiKey = process.env.MISTRAL_API_KEY || '';
-  }
-
+export class AIService {
   /**
-   * Genera una respuesta del chat usando Mistral
+   * Genera una respuesta del chat usando Venice Uncensored
    */
   static async generateChatResponse(
     userMessage: string,
     context: ChatContext
   ): Promise<{ message: string; tokensUsed: number }> {
     try {
-      this.initialize();
+
       
       // Construir el prompt del sistema basado en el avatar
       const systemPrompt = this.buildSystemPrompt(context.avatar);
@@ -41,45 +34,22 @@ export class MistralService {
         { role: 'user', content: userMessage }
       ];
 
-      // Formatear mensajes para la API de Mistral
+      // Formatear mensajes para Venice
       const formattedMessages = messages.map(msg => ({
         role: msg.role,
         content: msg.content
       }));
 
-      // Llamar a la API de Mistral
-      const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` })
-        },
-        body: JSON.stringify({
-          model: process.env.MISTRAL_MODEL || 'mistral:7b-instruct',
-          messages: formattedMessages,
-          max_tokens: 500,
-          temperature: 0.8,
-          presence_penalty: 0.1,
-          frequency_penalty: 0.1,
-          stream: false
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Mistral API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const responseMessage = data.choices[0]?.message?.content || 'Lo siento, no pude generar una respuesta.';
-      const tokensUsed = data.usage?.total_tokens || 0;
-
+      // Llamar a Venice
+      const response = await getVeniceResponse(formattedMessages);
+      
       return {
-        message: responseMessage,
-        tokensUsed
+        message: response,
+        tokensUsed: 0 // Venice no devuelve tokens usados
       };
     } catch (error) {
-      console.error('Error en Mistral API:', error);
-      throw new Error('Error al generar respuesta de IA');
+      console.error('Error en IA API:', error);
+      throw new Error('Error de conexión con el servicio de IA. Por favor, intenta de nuevo en unos momentos.');
     }
   }
 
@@ -164,8 +134,6 @@ Ejemplo de respuesta: Sé explícito, sensual y directo si el usuario lo pide, p
     category: string
   ): Promise<string> {
     try {
-      this.initialize();
-      
       const prompt = `Genera una descripción atractiva y detallada para un avatar llamado "${name}" con personalidad: ${personality}. Categoría: ${category}.
 
 La descripción debe ser:
@@ -177,27 +145,14 @@ La descripción debe ser:
 
 Ejemplo de tono: Elegante, misteriosa, atractiva pero respetuosa.`;
 
-      const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` })
-        },
-        body: JSON.stringify({
-          model: process.env.MISTRAL_MODEL || 'mistral:7b-instruct',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 100,
-          temperature: 0.7,
-          stream: false
-        })
-      });
+      // Usar Venice para generar la descripción
+      const messages = [
+        { role: 'system', content: 'Eres un asistente experto en crear descripciones atractivas y seductoras para avatares de IA.' },
+        { role: 'user', content: prompt }
+      ];
 
-      if (!response.ok) {
-        throw new Error(`Mistral API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0]?.message?.content || `${name} es un avatar atractivo con personalidad ${personality}.`;
+      const response = await getVeniceResponse(messages);
+      return response;
     } catch (error) {
       console.error('Error generando descripción de avatar:', error);
       return `${name} es un avatar atractivo con personalidad ${personality}.`;
@@ -209,32 +164,16 @@ Ejemplo de tono: Elegante, misteriosa, atractiva pero respetuosa.`;
    */
   static async generateContent(prompt: string): Promise<string> {
     try {
-      this.initialize();
-      
-      const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` })
-        },
-        body: JSON.stringify({
-          model: process.env.MISTRAL_MODEL || 'mistral:7b-instruct',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 2000,
-          temperature: 0.8,
-          stream: false
-        })
-      });
+      const messages = [
+        { role: 'system', content: 'Eres un asistente experto en generar contenido creativo y atractivo.' },
+        { role: 'user', content: prompt }
+      ];
 
-      if (!response.ok) {
-        throw new Error(`Mistral API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0]?.message?.content || '';
+      const response = await getVeniceResponse(messages);
+      return response;
     } catch (error) {
-      console.error('Error en Mistral API para generación de contenido:', error);
-      throw new Error('Error al generar contenido con IA');
+      console.error('Error generando contenido:', error);
+      return 'No pude generar el contenido solicitado.';
     }
   }
 } 

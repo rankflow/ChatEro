@@ -9,6 +9,7 @@ import dotenv from 'dotenv';
 // Cargar variables de entorno
 dotenv.config();
 
+
 // Importar middleware
 import { setupAuth } from './middleware/auth';
 
@@ -20,9 +21,7 @@ import paymentRoutes from './routes/payments';
 import adminRoutes from './routes/admin';
 
 const fastify = Fastify({
-  logger: {
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug'
-  }
+  logger: false
 });
 
 // Registrar plugins

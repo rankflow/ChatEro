@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { PrismaClient } from '@prisma/client';
-import { MistralService } from '../services/mistral.js';
+import { AIService } from '../services/aiService.js';
 import { Avatar } from '../types/index.js';
 
 const prisma = new PrismaClient();
@@ -295,7 +295,7 @@ Responde SOLO con un JSON válido que contenga todos estos campos completados. N
       
       try {
         // Usar el servicio de IA para generar el contenido
-        const response = await MistralService.generateContent(prompt);
+        const response = await AIService.generateContent(prompt);
         
         // Parsear la respuesta de la IA
         const completedAvatar = parseAIResponse(response, partialAvatar);

@@ -1,4 +1,4 @@
-import { MistralService } from './mistral';
+import { AIService } from './aiService';
 
 export interface CharacterProfile {
   name: string;
@@ -43,24 +43,35 @@ export class CharacterDevelopmentService {
     try {
       const prompt = this.buildCharacterGenerationPrompt(name, basePersonality, category);
       
-      const response = await fetch(`${process.env.MISTRAL_BASE_URL}/api/generate`, {
+      const response = await fetch(`${process.env.VENICE_API_URL || 'https://api.venice.ai/api/v1'}/chat/completions`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.VENICE_API_KEY}`
         },
         body: JSON.stringify({
-          model: process.env.MISTRAL_MODEL || 'mistral',
-          prompt: prompt,
-          stream: false
+          model: 'venice-uncensored',
+          messages: [
+            {
+              role: 'system',
+              content: 'Eres un asistente experto en crear perfiles de personajes para chat erótico. Sé creativo, atractivo y detallado.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 2000
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Mistral API error: ${response.status}`);
+        throw new Error(`Venice AI API error: ${response.status}`);
       }
 
       const data = await response.json();
-      const generatedContent = data.response || '';
+      const generatedContent = data.choices?.[0]?.message?.content || '';
       
       return this.parseCharacterProfile(name, basePersonality, generatedContent);
     } catch (error) {
@@ -233,24 +244,35 @@ La descripción debe ser:
 
 Ejemplo de tono: Elegante, misteriosa, atractiva pero respetuosa.`;
 
-      const response = await fetch(`${process.env.MISTRAL_BASE_URL}/api/generate`, {
+      const response = await fetch(`${process.env.VENICE_API_URL || 'https://api.venice.ai/api/v1'}/chat/completions`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.VENICE_API_KEY}`
         },
         body: JSON.stringify({
-          model: process.env.MISTRAL_MODEL || 'mistral',
-          prompt: prompt,
-          stream: false
+          model: 'venice-uncensored',
+          messages: [
+            {
+              role: 'system',
+              content: 'Eres un asistente experto en crear descripciones atractivas para personajes de chat erótico.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 500
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Mistral API error: ${response.status}`);
+        throw new Error(`Venice AI API error: ${response.status}`);
       }
 
       const data = await response.json();
-      return data.response || `${profile.name} es un personaje misterioso y atractivo que te cautivará con su personalidad única.`;
+      return data.choices?.[0]?.message?.content || `${profile.name} es un personaje misterioso y atractivo que te cautivará con su personalidad única.`;
     } catch (error) {
       console.error('Error generando descripción mejorada:', error);
       return `${profile.name} es un personaje misterioso y atractivo que te cautivará con su personalidad única.`;
