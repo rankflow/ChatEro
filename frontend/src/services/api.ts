@@ -128,17 +128,57 @@ class ApiService {
 
   // Chat
   async sendMessage(chatMessage: ChatMessage): Promise<ChatResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(chatMessage),
-    });
+    try {
+      // Verificar autenticación antes de enviar
+      if (!this.isAuthenticated()) {
+        console.log('[DEBUG] No autenticado, intentando login automático...');
+        
+        // Intentar login automático
+        try {
+          const loginResponse = await this.login({
+            email: 'test@example.com',
+            password: 'password123'
+          });
+          
+          if (loginResponse.success) {
+            console.log('[DEBUG] Login automático exitoso');
+          } else {
+            throw new Error('No estás autenticado. Por favor, inicia sesión de nuevo.');
+          }
+        } catch (loginError) {
+          console.log('[DEBUG] Error en login automático:', loginError);
+          throw new Error('No estás autenticado. Por favor, inicia sesión de nuevo.');
+        }
+      }
 
-    if (!response.ok) {
-      throw new Error('Error enviando mensaje');
+      const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(chatMessage),
+      });
+
+      console.log('[DEBUG] Status de respuesta:', response.status);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expirado o inválido
+          console.log('[DEBUG] Error 401 - Token expirado');
+          this.logout(); // Limpiar datos de sesión
+          throw new Error('Sesión expirada. Por favor, inicia sesión de nuevo.');
+        } else if (response.status === 403) {
+          throw new Error('No tienes permisos para enviar mensajes.');
+        } else {
+          const errorText = await response.text();
+          console.log('[DEBUG] Error response:', errorText);
+          throw new Error(`Error enviando mensaje: ${response.status} - ${errorText}`);
+        }
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('[API] Error en sendMessage:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async getChatHistory(limit: number = 50, offset: number = 0): Promise<{ success: boolean; messages: any[]; total: number }> {

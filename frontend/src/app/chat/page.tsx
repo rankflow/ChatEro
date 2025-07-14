@@ -19,9 +19,32 @@ export default function ChatPage() {
   const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [userTokens, setUserTokens] = useState(0);
   const [conversationMemory, setConversationMemory] = useState<ConversationMemory | undefined>(undefined);
+  const [avatarChanged, setAvatarChanged] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Verificar autenticación al cargar
+    if (!apiService.isAuthenticated()) {
+      console.log('[AUTH] Usuario no autenticado, redirigiendo...');
+      console.log('[DEBUG] Token en localStorage:', localStorage.getItem('authToken') ? 'SÍ' : 'NO');
+      console.log('[DEBUG] Usuario en localStorage:', localStorage.getItem('user') ? 'SÍ' : 'NO');
+      
+      // Intentar login automático antes de redirigir
+      apiService.login({
+        email: 'test@example.com',
+        password: 'password123'
+      }).then(() => {
+        console.log('[DEBUG] Login automático exitoso, continuando...');
+        loadAvatars();
+        loadUserTokens();
+        loadChatHistory();
+      }).catch(error => {
+        console.log('[DEBUG] Error en login automático:', error);
+        window.location.href = '/login';
+      });
+      return;
+    }
+    
     loadAvatars();
     loadUserTokens();
     loadChatHistory();
@@ -48,6 +71,23 @@ export default function ChatPage() {
     } catch (error) {
       console.error('Error cargando avatares:', error);
     }
+  };
+
+  const handleAvatarChange = (newAvatar: Avatar) => {
+    console.log(`[AVATAR] Cambiando de ${selectedAvatar?.name} a ${newAvatar.name}`);
+    
+    // Limpiar contexto cuando se cambia de avatar
+    setMessages([]);
+    setConversationMemory(undefined);
+    
+    // Actualizar avatar seleccionado
+    setSelectedAvatar(newAvatar);
+    
+    // Mostrar indicador de cambio
+    setAvatarChanged(true);
+    setTimeout(() => setAvatarChanged(false), 3000); // Ocultar después de 3 segundos
+    
+    console.log(`[AVATAR] Contexto limpiado para ${newAvatar.name}`);
   };
 
   const loadUserTokens = async () => {
@@ -95,10 +135,23 @@ export default function ChatPage() {
 
     try {
       // Convertir mensajes del frontend al formato del backend
-      const conversationHistory = messages.map(msg => ({
-        role: msg.isUser ? 'user' as const : 'assistant' as const,
-        content: msg.content
-      }));
+      // Filtrar mensajes que no tengan contenido válido
+      console.log('[DEBUG] Mensajes antes del filtro:', messages);
+      
+      const conversationHistory = messages
+        .filter(msg => {
+          const hasContent = msg.content && msg.content.trim() !== '';
+          if (!hasContent) {
+            console.log('[DEBUG] Mensaje filtrado por contenido vacío:', msg);
+          }
+          return hasContent;
+        })
+        .map(msg => ({
+          role: msg.isUser ? 'user' as const : 'assistant' as const,
+          content: msg.content.trim()
+        }));
+      
+      console.log('[DEBUG] ConversationHistory después del filtro:', conversationHistory);
 
       const chatMessage: ChatMessage = {
         message: inputMessage,
@@ -131,13 +184,30 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('Error enviando mensaje:', error);
-      const errorMessage: Message = {
+      
+      let errorMessage = 'Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('autenticado') || error.message.includes('sesión')) {
+          errorMessage = 'Sesión expirada. Por favor, inicia sesión de nuevo.';
+          // Redirigir al login después de un momento
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+        } else if (error.message.includes('permisos')) {
+          errorMessage = 'No tienes permisos para enviar mensajes.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      const errorMessageObj: Message = {
         id: `error-${Date.now()}`,
-        content: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo.',
+        content: errorMessage,
         isUser: false,
         timestamp: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev, errorMessageObj]);
     } finally {
       setIsLoading(false);
     }
@@ -234,7 +304,7 @@ export default function ChatPage() {
               {avatars.map((avatar) => (
                 <button
                   key={avatar.id}
-                  onClick={() => setSelectedAvatar(avatar)}
+                  onClick={() => handleAvatarChange(avatar)}
                   className={`flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 ${
                     selectedAvatar?.id === avatar.id
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
@@ -267,37 +337,47 @@ export default function ChatPage() {
                 <p className="text-sm mt-2">Selecciona un avatar y escribe tu primer mensaje</p>
               </div>
             ) : (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-                >
+              <>
+                {avatarChanged && (
+                  <div className="text-center py-2">
+                    <div className="inline-flex items-center space-x-2 bg-blue-500/20 text-blue-200 px-4 py-2 rounded-lg text-sm">
+                      <span>🔄</span>
+                      <span>Cambiado a {selectedAvatar?.name} - Contexto limpiado</span>
+                    </div>
+                  </div>
+                )}
+                {messages.map((message) => (
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                      message.isUser
-                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                        : 'bg-white/10 text-white'
-                    }`}
+                    key={message.id}
+                    className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="flex items-start space-x-2">
-                      {!message.isUser && selectedAvatar && (
-                        <div className="w-6 h-6 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                          <span className="text-white text-xs font-bold">{selectedAvatar.name[0]}</span>
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                        <div className="flex items-center justify-between mt-2 text-xs opacity-70">
-                          <span>{formatTime(message.timestamp)}</span>
-                          {message.tokensUsed && (
-                            <span className="ml-4">Tokens: {message.tokensUsed}</span>
-                          )}
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                        message.isUser
+                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                          : 'bg-white/10 text-white'
+                      }`}
+                    >
+                      <div className="flex items-start space-x-2">
+                        {!message.isUser && selectedAvatar && (
+                          <div className="w-6 h-6 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                            <span className="text-white text-xs font-bold">{selectedAvatar.name[0]}</span>
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                          <div className="flex items-center justify-between mt-2 text-xs opacity-70">
+                            <span>{formatTime(message.timestamp)}</span>
+                            {message.tokensUsed && (
+                              <span className="ml-4">Tokens: {message.tokensUsed}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
             {isLoading && (
               <div className="flex justify-start">

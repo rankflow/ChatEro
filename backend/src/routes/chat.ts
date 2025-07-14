@@ -90,6 +90,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       
       console.log(`[DEBUG] Historial recibido: ${history.length} mensajes`);
       console.log(`[DEBUG] Historial completo:`, JSON.stringify(history, null, 2));
+      console.log(`[DEBUG] Avatar seleccionado:`, avatarId);
 
       // Convertir memoria del frontend al formato del backend
       let memory: ConversationMemory | undefined;
