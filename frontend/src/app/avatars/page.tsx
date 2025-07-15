@@ -60,29 +60,6 @@ export default function AvatarsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-pink-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <Link href="/" className="flex items-center space-x-2">
-              <Heart className="h-8 w-8 text-pink-500" />
-              <span className="text-2xl font-bold text-gray-900">Chat Ero</span>
-            </Link>
-            <nav className="flex space-x-6">
-              <Link href="/" className="text-gray-600 hover:text-pink-500 transition-colors">
-                Inicio
-              </Link>
-              <Link href="/chat" className="text-gray-600 hover:text-pink-500 transition-colors">
-                Chat
-              </Link>
-              <Link href="/pricing" className="text-gray-600 hover:text-pink-500 transition-colors">
-                Precios
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}

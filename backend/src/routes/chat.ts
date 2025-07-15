@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { AIService, ChatContext, ConversationMemory } from '../services/aiService.js';
+import { AvatarExtendedMemoryService } from '../services/avatarExtendedMemory';
+import { AvatarSyncService } from '../services/avatarSyncService';
 
 // Esquemas de validación
 const chatMessageSchema = z.object({
@@ -68,22 +70,49 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       
       // Validación de contenido desactivada temporalmente
 
-      // TODO: Obtener avatar desde base de datos
-      const mockAvatar = avatarId ? {
-        id: avatarId,
-        name: avatarId === 'avatar_1' ? 'Luna' : 
-              avatarId === 'avatar_2' ? 'Sofia' : 
-              avatarId === 'avatar_3' ? 'Aria' : 
-              avatarId === 'avatar_4' ? 'Venus' : 'Avatar',
-        description: 'Un avatar atractivo y personalizado',
-        personality: 'Amigable, atractiva, inteligente',
-        imageUrl: `/api/avatars/${avatarId}/image`,
-        isPremium: false,
-        category: 'personalizado',
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      } : undefined;
+      // Obtener avatar desde datos sincronizados
+      let avatar = undefined;
+      if (avatarId) {
+        // Extraer el nombre del avatar del ID (ej: "avatar_aria" -> "aria")
+        const avatarName = avatarId.replace('avatar_', '');
+        
+        // Obtener datos sincronizados del avatar
+        const syncedData = AvatarSyncService.getSyncedAvatarData(avatarName);
+        
+        if (syncedData) {
+          avatar = {
+            id: syncedData.id,
+            name: syncedData.name,
+            description: syncedData.fullBackground || syncedData.description,
+            personality: syncedData.fullPersonality || syncedData.personality,
+            imageUrl: syncedData.imageUrl,
+            isPremium: syncedData.isPremium,
+            category: syncedData.category,
+            isActive: syncedData.isActive,
+            createdAt: syncedData.createdAt,
+            updatedAt: syncedData.updatedAt
+          };
+        } else {
+          // Si no hay datos sincronizados, sincronizar primero
+          console.log(`[CHAT] Sincronizando avatar ${avatarName} para obtener datos...`);
+          const newSyncedData = await AvatarSyncService.syncAvatar(avatarName);
+          
+          if (newSyncedData) {
+            avatar = {
+              id: newSyncedData.id,
+              name: newSyncedData.name,
+              description: newSyncedData.fullBackground || newSyncedData.description,
+              personality: newSyncedData.fullPersonality || newSyncedData.personality,
+              imageUrl: newSyncedData.imageUrl,
+              isPremium: newSyncedData.isPremium,
+              category: newSyncedData.category,
+              isActive: newSyncedData.isActive,
+              createdAt: newSyncedData.createdAt,
+              updatedAt: newSyncedData.updatedAt
+            };
+          }
+        }
+      }
 
       // Usar historial recibido del frontend o crear uno vacío
       const history = conversationHistory || [];
@@ -112,13 +141,41 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         console.log(`[DEBUG] Memoria completa:`, JSON.stringify(memory, null, 2));
       }
 
+      // --- INTEGRACIÓN MEMORIA EXTENDIDA ---
+      let extraFicha = '';
+      if (avatarId && message) {
+        console.log(`[DEBUG] Buscando dato en memoria extendida para avatar: ${avatarId}`);
+        console.log(`[DEBUG] Mensaje del usuario: "${message}"`);
+        
+        // Buscar dato relevante en la memoria extendida
+        const fichaDato = AvatarExtendedMemoryService.getAvatarDetail(avatarId, message);
+        if (fichaDato) {
+          extraFicha = `\nDato de ficha: ${avatar?.name || avatarId} ${fichaDato}`;
+          console.log(`[DEBUG] ✅ Dato encontrado en memoria extendida: ${fichaDato}`);
+          console.log(`[DEBUG] Añadiendo al contexto: ${extraFicha}`);
+        } else {
+          console.log(`[DEBUG] ❌ No se encontró dato relevante en memoria extendida`);
+        }
+      } else {
+        console.log(`[DEBUG] No se puede buscar en memoria extendida - avatarId: ${avatarId}, message: ${message ? 'Sí' : 'No'}`);
+      }
+      // --- FIN INTEGRACIÓN ---
+
       // Preparar contexto para Venice AI con memoria
       const chatContext: ChatContext = {
-        avatar: mockAvatar,
+        avatar: avatar,
         conversationHistory: history,
         userPreferences: context,
         conversationMemory: memory
       };
+
+      // Añadir dato de ficha al contexto si se encontró
+      if (extraFicha) {
+        chatContext.conversationHistory = [
+          ...(chatContext.conversationHistory || []),
+          { role: 'system', content: extraFicha }
+        ];
+      }
 
       console.log(`[DEBUG] Contexto completo enviado a Venice:`, JSON.stringify(chatContext, null, 2));
 

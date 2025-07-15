@@ -24,43 +24,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-pink-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-2">
-              <Heart className="h-8 w-8 text-pink-500" />
-              <span className="text-2xl font-bold text-gray-900">Chat Ero</span>
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <Link href="#features" className="text-gray-600 hover:text-pink-500 transition-colors">
-                Características
-              </Link>
-              <Link href="#pricing" className="text-gray-600 hover:text-pink-500 transition-colors">
-                Precios
-              </Link>
-              <Link href="#legal" className="text-gray-600 hover:text-pink-500 transition-colors">
-                Legal
-              </Link>
-            </nav>
-            <div className="flex space-x-4">
-              <Link 
-                href="/login" 
-                className="text-gray-600 hover:text-pink-500 transition-colors"
-              >
-                Iniciar Sesión
-              </Link>
-              <Link 
-                href="/register" 
-                className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors"
-              >
-                Registrarse
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
