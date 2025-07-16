@@ -113,10 +113,20 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       
-      // TODO: Implementar obtención de imagen desde base de datos o sistema de archivos
-      const mockImageUrl = `https://via.placeholder.com/400x600/FF69B4/FFFFFF?text=${encodeURIComponent(id)}`;
+      // Extraer el nombre del avatar del ID (ej: "avatar_aria" -> "aria")
+      const avatarName = id.replace('avatar_', '');
       
-      return reply.redirect(mockImageUrl);
+      // Obtener datos sincronizados del avatar
+      const syncedData = AvatarSyncService.getSyncedAvatarData(avatarName);
+      
+      if (syncedData && syncedData.imageUrl) {
+        // Si tenemos una URL de imagen real, redirigir a ella
+        return reply.redirect(syncedData.imageUrl);
+      } else {
+        // Fallback a imagen placeholder
+        const mockImageUrl = `https://via.placeholder.com/400x600/FF69B4/FFFFFF?text=${encodeURIComponent(avatarName)}`;
+        return reply.redirect(mockImageUrl);
+      }
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({

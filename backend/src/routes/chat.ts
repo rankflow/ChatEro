@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AIService, ChatContext, ConversationMemory } from '../services/aiService.js';
 import { AvatarExtendedMemoryService } from '../services/avatarExtendedMemory';
 import { AvatarSyncService } from '../services/avatarSyncService';
+import { DatabaseService } from '../services/database.js';
 
 // Esquemas de validación
 const chatMessageSchema = z.object({
@@ -182,13 +183,37 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       // Generar respuesta con Venice AI
       const aiResponse = await AIService.generateChatResponse(message, chatContext);
       
-      // TODO: Guardar mensaje y respuesta en base de datos
+      // Guardar mensaje del usuario en base de datos
+      const userMessage = await DatabaseService.saveMessage(
+        userId,
+        message,
+        true,
+        avatarId,
+        0 // Los mensajes del usuario no consumen tokens
+      );
+
+      // Guardar respuesta de la IA en base de datos
+      const aiMessage = await DatabaseService.saveMessage(
+        userId,
+        aiResponse.message,
+        false,
+        avatarId,
+        aiResponse.tokensUsed
+      );
+
+      // Consumir tokens si la respuesta fue exitosa
+      if (aiMessage && aiResponse.tokensUsed > 0) {
+        const tokensConsumed = await DatabaseService.consumeTokens(userId, aiResponse.tokensUsed);
+        if (!tokensConsumed) {
+          console.warn(`[WARNING] No se pudieron consumir ${aiResponse.tokensUsed} tokens para usuario ${userId}`);
+        }
+      }
       
       return reply.send({
         success: true,
         message: aiResponse.message,
         timestamp: new Date().toISOString(),
-        messageId: `msg_${Date.now()}`,
+        messageId: aiMessage?.id || `msg_${Date.now()}`,
         tokensUsed: aiResponse.tokensUsed,
         conversationMemory: memory // Devolver memoria actualizada
       });
@@ -256,29 +281,24 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       const { limit = 50, offset = 0 } = request.query as any;
       const userId = (request.user as any)?.userId;
       
-      // TODO: Implementar obtención de historial desde base de datos
-      // Por ahora, simulamos el historial
+      // Obtener historial real desde base de datos
+      const { messages, total } = await DatabaseService.getMessageHistory(userId, limit, offset);
       
-      const mockHistory = [
-        {
-          id: 'msg_1',
-          message: 'Hola, ¿cómo estás?',
-          isUser: true,
-          timestamp: new Date(Date.now() - 60000).toISOString()
-        },
-        {
-          id: 'msg_2',
-          message: '¡Hola! Estoy muy bien, gracias por preguntar. ¿En qué puedo ayudarte hoy?',
-          isUser: false,
-          timestamp: new Date(Date.now() - 30000).toISOString()
-        }
-      ];
+      // Formatear mensajes para el frontend
+      const formattedMessages = messages.map(msg => ({
+        id: msg.id,
+        message: msg.content,
+        isUser: msg.isUser,
+        timestamp: msg.createdAt.toISOString(),
+        tokensUsed: msg.tokensUsed,
+        avatarId: msg.avatarId
+      }));
       
       return reply.send({
         success: true,
-        messages: mockHistory,
-        total: mockHistory.length,
-        hasMore: false
+        messages: formattedMessages,
+        total,
+        hasMore: total > offset + limit
       });
     } catch (error) {
       fastify.log.error(error);
@@ -297,7 +317,15 @@ export default async function chatRoutes(fastify: FastifyInstance) {
     try {
       const userId = (request.user as any)?.userId;
       
-      // TODO: Implementar limpieza de historial en base de datos
+      // Limpiar historial real desde base de datos
+      const success = await DatabaseService.clearMessageHistory(userId);
+      
+      if (!success) {
+        return reply.status(500).send({
+          success: false,
+          message: 'Error al limpiar el historial'
+        });
+      }
       
       return reply.send({
         success: true,

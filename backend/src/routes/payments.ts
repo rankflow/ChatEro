@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { DatabaseService } from '../services/database.js';
 
 // Esquemas de validación
 const createPaymentIntentSchema = z.object({
@@ -162,29 +163,12 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     try {
       const userId = (request.user as any)?.userId;
       
-      // TODO: Implementar obtención desde base de datos
-      const mockHistory = [
-        {
-          id: 'pay_1',
-          amount: 3999,
-          currency: 'usd',
-          status: 'succeeded',
-          description: '500 Tokens',
-          createdAt: new Date(Date.now() - 86400000).toISOString() // 1 día atrás
-        },
-        {
-          id: 'pay_2',
-          amount: 1999,
-          currency: 'usd',
-          status: 'succeeded',
-          description: 'Suscripción Mensual',
-          createdAt: new Date(Date.now() - 604800000).toISOString() // 1 semana atrás
-        }
-      ];
+      // Obtener historial real desde base de datos
+      const payments = await DatabaseService.getPaymentHistory(userId);
       
       return reply.send({
         success: true,
-        payments: mockHistory
+        payments
       });
     } catch (error) {
       fastify.log.error(error);

@@ -193,4 +193,100 @@ export class DatabaseService {
       return false;
     }
   }
+
+  /**
+   * Guardar pago en la base de datos
+   */
+  static async savePayment(
+    userId: string,
+    amount: number,
+    currency: string,
+    status: string,
+    stripeId?: string,
+    description?: string,
+    metadata?: any
+  ): Promise<any> {
+    try {
+      const payment = await prisma.payment.create({
+        data: {
+          userId,
+          amount,
+          currency,
+          status,
+          stripeId,
+          description,
+          metadata: metadata ? JSON.stringify(metadata) : null
+        }
+      });
+      return payment;
+    } catch (error) {
+      console.error('Error guardando pago:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Obtener historial de pagos del usuario
+   */
+  static async getPaymentHistory(userId: string): Promise<any[]> {
+    try {
+      const payments = await prisma.payment.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      return payments.map(payment => ({
+        id: payment.id,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: payment.status,
+        description: payment.description,
+        createdAt: payment.createdAt.toISOString()
+      }));
+    } catch (error) {
+      console.error('Error obteniendo historial de pagos:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener todos los avatares desde la base de datos
+   */
+  static async getAllAvatars(): Promise<any[]> {
+    try {
+      const avatars = await prisma.avatar.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' }
+      });
+      return avatars;
+    } catch (error) {
+      console.error('Error obteniendo avatares:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Crear o actualizar avatar en la base de datos
+   */
+  static async createOrUpdateAvatar(avatarData: any): Promise<any> {
+    try {
+      const existingAvatar = await prisma.avatar.findFirst({
+        where: { name: avatarData.name }
+      });
+
+      if (existingAvatar) {
+        return await prisma.avatar.update({
+          where: { id: existingAvatar.id },
+          data: avatarData
+        });
+      } else {
+        return await prisma.avatar.create({
+          data: avatarData
+        });
+      }
+    } catch (error) {
+      console.error('Error creando/actualizando avatar:', error);
+      return null;
+    }
+  }
 } 

@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { apiService, ChatMessage, ChatResponse, Avatar, ConversationMemory } from '../../services/api';
 import { useMessageAccumulator } from '../../hooks/useMessageAccumulator';
 import AuthGuard from '../../components/AuthGuard';
+import ConnectionStatus from '../../components/ConnectionStatus';
+import EmojiPickerComponent from '../../components/EmojiPicker';
 
 interface Message {
   id: string;
@@ -86,15 +88,21 @@ function ChatPageContent() {
   const loadChatHistory = async () => {
     try {
       const response = await apiService.getChatHistory();
-      if (response.success) {
-        const formattedMessages = response.messages.map((msg: { id: string; content: string; isUser: boolean; createdAt: string; tokensUsed?: number }) => ({
-          id: msg.id,
-          content: msg.content,
-          isUser: msg.isUser,
-          timestamp: msg.createdAt,
-          tokensUsed: msg.tokensUsed,
-        }));
-        setMessages(formattedMessages);
+      if (response.success && response.messages && response.messages.length > 0) {
+        const formattedMessages = response.messages
+          .filter((msg: any) => msg.content && msg.content.trim() !== '') // Solo mensajes con contenido
+          .map((msg: { id: string; content: string; isUser: boolean; createdAt: string; tokensUsed?: number }) => ({
+            id: msg.id,
+            content: msg.content,
+            isUser: msg.isUser,
+            timestamp: msg.createdAt,
+            tokensUsed: msg.tokensUsed,
+          }));
+        
+        // Solo establecer mensajes si hay mensajes válidos
+        if (formattedMessages.length > 0) {
+          setMessages(formattedMessages);
+        }
       }
     } catch (error) {
       console.error('Error cargando historial:', error);
@@ -222,9 +230,35 @@ function ChatPageContent() {
   };
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit',
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        // Si el timestamp es inválido, usar la hora actual
+        return new Date().toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+      return date.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      // En caso de error, usar la hora actual
+      return new Date().toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+  };
+
+  // Función para procesar emojis en el contenido del mensaje
+  const processEmojis = (content: string) => {
+    // Regex para detectar emojis Unicode
+    const emojiRegex = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
+    
+    return content.replace(emojiRegex, (emoji) => {
+      return `<span style="font-size: 1.5em;">${emoji}</span>`;
     });
   };
 
@@ -233,27 +267,33 @@ function ChatPageContent() {
       {/* Header local unificado: selector de avatares + tokens + limpiar chat */}
       <div className="bg-black/20 backdrop-blur-lg border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          {/* Selector de avatares */}
-          <div className="flex space-x-4 overflow-x-auto pb-2">
-            {avatars.map((avatar) => (
-              <button
-                key={avatar.id}
-                onClick={() => handleAvatarChange(avatar)}
-                className={`flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 ${
-                  selectedAvatar?.id === avatar.id
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                    : 'bg-white/10 hover:bg-white/20 text-white/80'
-                }`}
-              >
-                <div className="w-6 h-6 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">{avatar.name[0]}</span>
-                </div>
-                <span className="text-sm font-medium">{avatar.name}</span>
-                {avatar.isPremium && (
-                  <span className="text-yellow-400 text-xs">⭐</span>
-                )}
-              </button>
-            ))}
+          {/* Estado de conexión y selector de avatares */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <ConnectionStatus />
+            </div>
+            {/* Selector de avatares */}
+            <div className="flex space-x-4 overflow-x-auto pb-2">
+              {avatars.map((avatar) => (
+                <button
+                  key={avatar.id}
+                  onClick={() => handleAvatarChange(avatar)}
+                  className={`flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 ${
+                    selectedAvatar?.id === avatar.id
+                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                      : 'bg-white/10 hover:bg-white/20 text-white/80'
+                  }`}
+                >
+                  <div className="w-6 h-6 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">{avatar.name[0]}</span>
+                  </div>
+                  <span className="text-sm font-medium">{avatar.name}</span>
+                  {avatar.isPremium && (
+                    <span className="text-yellow-400 text-xs">⭐</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
           {/* Controles de tokens y limpiar chat */}
           <div className="flex items-center space-x-4 ml-4">
@@ -317,7 +357,10 @@ function ChatPageContent() {
                           </div>
                         )}
                         <div className="flex-1">
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                          <p 
+                            className="text-sm leading-relaxed whitespace-pre-wrap"
+                            dangerouslySetInnerHTML={{ __html: processEmojis(message.content) }}
+                          />
                           <div className="flex items-center justify-between mt-2 text-xs opacity-70">
                             <span>{formatTime(message.timestamp)}</span>
                             {message.tokensUsed && (
@@ -353,7 +396,7 @@ function ChatPageContent() {
           {/* Input Area */}
           <div className="border-t border-white/10 p-4">
             <div className="flex space-x-4">
-              <div className="flex-1 relative">
+              <div className="flex-1 relative flex items-center space-x-2">
                 <textarea
                   ref={(ref) => {
                     textareaRef.current = ref;
@@ -367,8 +410,19 @@ function ChatPageContent() {
                 }}
                   onKeyPress={handleKeyPress}
                   placeholder="Escribe tu mensaje..."
-                  className="w-full bg-white/10 text-white placeholder-white/50 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition-all duration-300"
+                  className="flex-1 bg-white/10 text-white placeholder-white/50 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition-all duration-300"
                   rows={1}
+                />
+                <EmojiPickerComponent
+                  onEmojiClick={(emoji: string) => {
+                    const newValue = inputMessage + emoji;
+                    setInputMessage(newValue);
+                    handleTextareaChange(newValue);
+                    // Devolver el foco al textarea después de insertar el emoji
+                    setTimeout(() => {
+                      textareaRef.current?.focus();
+                    }, 100);
+                  }}
                 />
               </div>
               <button

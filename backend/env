@@ -1,0 +1,19 @@
+# Configuración del servidor
+PORT=3001
+HOST=0.0.0.0
+NODE_ENV=development
+
+# Base de datos
+DATABASE_URL="file:./prisma/dev.db"
+
+# JWT
+JWT_SECRET=tu-jwt-secret-super-seguro-aqui-cambiar-en-produccion
+
+# Venice Uncensored
+USE_VENICE_MODEL=true
+VENICE_API_KEY=2lVrq2Li0x6EPvpEavss544mEd7xF3OY1kVVTzDzmS
+VENICE_API_URL=https://api.venice.ai/api/v1/chat/completions
+VENICE_MODEL=venice-uncensored
+
+# Frontend URL (para CORS)
+FRONTEND_URL=http://localhost:3000 

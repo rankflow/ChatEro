@@ -12,17 +12,37 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const router = useRouter();
 
+  const checkAuth = () => {
+    const authenticated = apiService.isAuthenticated();
+    setIsAuthenticated(authenticated);
+    
+    if (!authenticated) {
+      router.push('/login');
+    }
+  };
+
   useEffect(() => {
-    const checkAuth = () => {
-      const authenticated = apiService.isAuthenticated();
-      setIsAuthenticated(authenticated);
-      
-      if (!authenticated) {
-        router.push('/login');
+    checkAuth();
+
+    // Escuchar cambios en localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'authToken' || e.key === 'user') {
+        checkAuth();
       }
     };
 
-    checkAuth();
+    // Escuchar cambios locales (mismo tab)
+    const handleLocalChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleLocalChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleLocalChange);
+    };
   }, [router]);
 
   // Mostrar loading mientras verifica autenticación
