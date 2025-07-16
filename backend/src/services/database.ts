@@ -27,7 +27,7 @@ export class DatabaseService {
       const avatar = await prisma.avatar.findUnique({
         where: { id: avatarId }
       });
-      return avatar;
+      return avatar as Avatar | null;
     } catch (error) {
       console.error('Error obteniendo avatar:', error);
       return null;
@@ -94,7 +94,7 @@ export class DatabaseService {
           tokensUsed
         }
       });
-      return message;
+      return message as Message;
     } catch (error) {
       console.error('Error guardando mensaje:', error);
       return null;
@@ -126,7 +126,7 @@ export class DatabaseService {
       ]);
 
       return {
-        messages: messages.reverse(), // Ordenar cronológicamente
+        messages: messages.reverse() as Message[], // Ordenar cronológicamente
         total
       };
     } catch (error) {

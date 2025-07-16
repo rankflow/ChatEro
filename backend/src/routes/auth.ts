@@ -1,5 +1,9 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { PrismaClient } from '@prisma/client';
+import { AuthService } from '../services/authService.js';
+
+const prisma = new PrismaClient();
 
 // Esquemas de validación
 const registerSchema = z.object({
@@ -31,24 +35,27 @@ export default async function authRoutes(fastify: FastifyInstance) {
     try {
       const { email, password, username } = registerSchema.parse(request.body);
       
-      // TODO: Implementar lógica de registro con base de datos
-      // Por ahora, simulamos el registro
+      // Registrar usuario con autenticación real
+      const user = await AuthService.registerUser(email, password, username);
+      
+      if (!user) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Error al registrar usuario. El email o username ya está en uso.'
+        });
+      }
       
       const token = fastify.jwt.sign({ 
-        userId: 'temp-user-id',
-        email,
-        username 
+        userId: user.id,
+        email: user.email,
+        username: user.username
       });
       
       return reply.send({
         success: true,
         message: 'Usuario registrado exitosamente',
         token,
-        user: {
-          id: 'temp-user-id',
-          email,
-          username
-        }
+        user
       });
     } catch (error) {
       fastify.log.error(error);
@@ -76,24 +83,27 @@ export default async function authRoutes(fastify: FastifyInstance) {
     try {
       const { email, password } = loginSchema.parse(request.body);
       
-      // TODO: Implementar lógica de login con base de datos
-      // Por ahora, simulamos el login
+      // Autenticar usuario con base de datos
+      const user = await AuthService.loginUser(email, password);
+      
+      if (!user) {
+        return reply.status(401).send({
+          success: false,
+          message: 'Credenciales inválidas'
+        });
+      }
       
       const token = fastify.jwt.sign({ 
-        userId: 'temp-user-id',
-        email,
-        username: 'usuario_temp'
+        userId: user.id,
+        email: user.email,
+        username: user.username
       });
       
       return reply.send({
         success: true,
         message: 'Login exitoso',
         token,
-        user: {
-          id: 'temp-user-id',
-          email,
-          username: 'usuario_temp'
-        }
+        user
       });
     } catch (error) {
       fastify.log.error(error);
@@ -121,12 +131,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
     preHandler: [fastify.authenticate]
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // TODO: Implementar lógica para obtener tokens de la base de datos
-      // Por ahora, simulamos que el usuario tiene 100 tokens
+      const userId = (request.user as any)?.userId;
+      
+      if (!userId) {
+        return reply.status(401).send({
+          success: false,
+          message: 'Usuario no autenticado'
+        });
+      }
+      
+      // Obtener tokens de la base de datos
+      const tokenRecord = await prisma.token.findFirst({
+        where: { userId }
+      });
+      
+      const tokens = tokenRecord?.amount || 0;
       
       return reply.send({
         success: true,
-        tokens: 100
+        tokens
       });
     } catch (error) {
       fastify.log.error(error);

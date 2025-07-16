@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { apiService, ChatMessage, ChatResponse, Avatar, ConversationMemory } from '../../services/api';
+import { useMessageAccumulator } from '../../hooks/useMessageAccumulator';
 
 interface Message {
   id: string;
@@ -21,6 +22,7 @@ export default function ChatPage() {
   const [conversationMemory, setConversationMemory] = useState<ConversationMemory | undefined>(undefined);
   const [avatarChanged, setAvatarChanged] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     // Verificar autenticación al cargar
@@ -79,6 +81,7 @@ export default function ChatPage() {
     // Limpiar contexto cuando se cambia de avatar
     setMessages([]);
     setConversationMemory(undefined);
+    resetAccumulator(); // Resetear el acumulador
     
     // Actualizar avatar seleccionado
     setSelectedAvatar(newAvatar);
@@ -105,7 +108,7 @@ export default function ChatPage() {
     try {
       const response = await apiService.getChatHistory();
       if (response.success) {
-        const formattedMessages = response.messages.map((msg: any) => ({
+        const formattedMessages = response.messages.map((msg: { id: string; content: string; isUser: boolean; createdAt: string; tokensUsed?: number }) => ({
           id: msg.id,
           content: msg.content,
           isUser: msg.isUser,
@@ -119,45 +122,25 @@ export default function ChatPage() {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+  // Función que envía mensaje al backend (sin acumulación)
+  const sendMessageToBackend = async (messageContent: string) => {
+    if (isLoading) return;
 
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      content: inputMessage,
-      isUser: true,
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
     setIsLoading(true);
 
     try {
-      // Convertir mensajes del frontend al formato del backend
-      // Filtrar mensajes que no tengan contenido válido
-      console.log('[DEBUG] Mensajes antes del filtro:', messages);
-      
       const conversationHistory = messages
-        .filter(msg => {
-          const hasContent = msg.content && msg.content.trim() !== '';
-          if (!hasContent) {
-            console.log('[DEBUG] Mensaje filtrado por contenido vacío:', msg);
-          }
-          return hasContent;
-        })
+        .filter(msg => msg.content && msg.content.trim() !== '')
         .map(msg => ({
           role: msg.isUser ? 'user' as const : 'assistant' as const,
           content: msg.content.trim()
         }));
-      
-      console.log('[DEBUG] ConversationHistory después del filtro:', conversationHistory);
 
       const chatMessage: ChatMessage = {
-        message: inputMessage,
+        message: messageContent,
         avatarId: selectedAvatar?.id,
-        conversationMemory: conversationMemory || {}, // Enviar objeto vacío en lugar de undefined
-        conversationHistory: conversationHistory, // Enviar historial
+        conversationMemory: conversationMemory || {},
+        conversationHistory: conversationHistory,
       };
 
       const response: ChatResponse = await apiService.sendMessage(chatMessage);
@@ -173,13 +156,10 @@ export default function ChatPage() {
 
         setMessages(prev => [...prev, aiMessage]);
         
-        // Actualizar memoria contextual si se devuelve
         if (response.conversationMemory) {
           setConversationMemory(response.conversationMemory);
-          console.log('[MEMORY] Memoria actualizada:', response.conversationMemory);
         }
         
-        // Actualizar tokens del usuario
         await loadUserTokens();
       }
     } catch (error) {
@@ -190,7 +170,6 @@ export default function ChatPage() {
       if (error instanceof Error) {
         if (error.message.includes('autenticado') || error.message.includes('sesión')) {
           errorMessage = 'Sesión expirada. Por favor, inicia sesión de nuevo.';
-          // Redirigir al login después de un momento
           setTimeout(() => {
             window.location.href = '/login';
           }, 2000);
@@ -213,6 +192,35 @@ export default function ChatPage() {
     }
   };
 
+  // Hook de acumulación de mensajes
+  const {
+    sendWithAccumulation,
+    handleTextareaChange,
+    resetAccumulator,
+    setTextareaRef
+  } = useMessageAccumulator({
+    onSendMessage: sendMessageToBackend,
+    onShowMessage: (message) => {
+      // Mostrar solo el mensaje individual en el frontend
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        content: message,
+        isUser: true,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, userMessage]);
+    },
+    isResponding: isLoading
+  });
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    // Usar el hook de acumulación
+    await sendWithAccumulation(inputMessage);
+    setInputMessage(''); // Limpiar textarea inmediatamente
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -226,6 +234,7 @@ export default function ChatPage() {
       if (response.success) {
         setMessages([]);
         setConversationMemory(undefined); // Limpiar memoria también
+        resetAccumulator(); // Resetear el acumulador
         console.log('[MEMORY] Memoria limpiada');
       }
     } catch (error) {
@@ -384,18 +393,25 @@ export default function ChatPage() {
             <div className="flex space-x-4">
               <div className="flex-1 relative">
                 <textarea
+                  ref={(ref) => {
+                    textareaRef.current = ref;
+                    setTextareaRef(ref);
+                  }}
                   value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
+                  onChange={(e) => {
+                  const newValue = e.target.value;
+                  setInputMessage(newValue);
+                  handleTextareaChange(newValue);
+                }}
                   onKeyPress={handleKeyPress}
                   placeholder="Escribe tu mensaje..."
                   className="w-full bg-white/10 text-white placeholder-white/50 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition-all duration-300"
                   rows={1}
-                  disabled={isLoading}
                 />
               </div>
               <button
                 onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isLoading}
+                disabled={!inputMessage.trim()}
                 className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-pink-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center space-x-2"
               >
                 <span>Enviar</span>

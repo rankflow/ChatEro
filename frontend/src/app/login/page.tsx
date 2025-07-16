@@ -147,8 +147,8 @@ export default function LoginPage() {
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="text-sm font-medium text-blue-800 mb-2">Credenciales de Prueba:</h3>
           <div className="text-xs text-blue-700 space-y-1">
-            <p><strong>Email:</strong> demo@example.com</p>
-            <p><strong>Contraseña:</strong> demo123</p>
+            <p><strong>Email:</strong> test2@example.com</p>
+            <p><strong>Contraseña:</strong> password123</p>
           </div>
         </div>
       </div>

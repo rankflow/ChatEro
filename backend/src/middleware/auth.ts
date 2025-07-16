@@ -1,14 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
-// Extender el tipo de request para incluir el usuario
-declare module 'fastify' {
-  interface FastifyRequest {
-    user?: {
-      userId: string;
-      email: string;
-      username: string;
-    };
-  }
+// Tipo para el usuario autenticado
+interface AuthenticatedUser {
+  userId: string;
+  email: string;
+  username: string;
 }
 
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
@@ -23,7 +19,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     }
     
     const decoded = request.server.jwt.verify(token);
-    request.user = decoded as any;
+    request.user = decoded as AuthenticatedUser;
     
   } catch (error) {
     return reply.status(401).send({

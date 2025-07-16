@@ -28,7 +28,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { amount, currency, paymentMethod, packageId } = createPaymentIntentSchema.parse(request.body);
-      const userId = request.user?.userId;
+      const userId = (request.user as any)?.userId;
       
       // TODO: Implementar integración real con Stripe
       // Por ahora, simulamos la creación del intent
@@ -160,7 +160,7 @@ export default async function paymentRoutes(fastify: FastifyInstance) {
     preHandler: [fastify.authenticate]
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const userId = request.user?.userId;
+      const userId = (request.user as any)?.userId;
       
       // TODO: Implementar obtención desde base de datos
       const mockHistory = [

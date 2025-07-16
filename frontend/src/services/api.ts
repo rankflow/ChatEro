@@ -60,7 +60,7 @@ export interface Avatar {
 
 class ApiService {
   private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('authToken');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
     return {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -82,7 +82,7 @@ class ApiService {
     }
 
     const data = await response.json();
-    if (data.success && data.token) {
+    if (data.success && data.token && typeof window !== 'undefined') {
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
     }
@@ -104,7 +104,7 @@ class ApiService {
     }
 
     const data = await response.json();
-    if (data.success && data.token) {
+    if (data.success && data.token && typeof window !== 'undefined') {
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
     }
@@ -113,15 +113,18 @@ class ApiService {
   }
 
   logout(): void {
+    if (typeof window === 'undefined') return;
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
   }
 
   isAuthenticated(): boolean {
+    if (typeof window === 'undefined') return false;
     return !!localStorage.getItem('authToken');
   }
 
   getCurrentUser() {
+    if (typeof window === 'undefined') return null;
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   }
@@ -136,7 +139,7 @@ class ApiService {
         // Intentar login automático
         try {
           const loginResponse = await this.login({
-            email: 'test@example.com',
+            email: 'test2@example.com',
             password: 'password123'
           });
           
