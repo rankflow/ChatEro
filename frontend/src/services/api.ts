@@ -134,24 +134,7 @@ class ApiService {
     try {
       // Verificar autenticación antes de enviar
       if (!this.isAuthenticated()) {
-        console.log('[DEBUG] No autenticado, intentando login automático...');
-        
-        // Intentar login automático
-        try {
-          const loginResponse = await this.login({
-            email: 'test2@example.com',
-            password: 'password123'
-          });
-          
-          if (loginResponse.success) {
-            console.log('[DEBUG] Login automático exitoso');
-          } else {
-            throw new Error('No estás autenticado. Por favor, inicia sesión de nuevo.');
-          }
-        } catch (loginError) {
-          console.log('[DEBUG] Error en login automático:', loginError);
-          throw new Error('No estás autenticado. Por favor, inicia sesión de nuevo.');
-        }
+        throw new Error('No estás autenticado. Por favor, inicia sesión.');
       }
 
       const response = await fetch(`${API_BASE_URL}/api/chat/message`, {

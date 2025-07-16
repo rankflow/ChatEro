@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiService, ChatMessage, ChatResponse, Avatar, ConversationMemory } from '../../services/api';
 import { useMessageAccumulator } from '../../hooks/useMessageAccumulator';
+import AuthGuard from '../../components/AuthGuard';
 
 interface Message {
   id: string;
@@ -12,7 +13,7 @@ interface Message {
   tokensUsed?: number;
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,28 +26,6 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // Verificar autenticación al cargar
-    if (!apiService.isAuthenticated()) {
-      console.log('[AUTH] Usuario no autenticado, redirigiendo...');
-      console.log('[DEBUG] Token en localStorage:', localStorage.getItem('authToken') ? 'SÍ' : 'NO');
-      console.log('[DEBUG] Usuario en localStorage:', localStorage.getItem('user') ? 'SÍ' : 'NO');
-      
-      // Intentar login automático antes de redirigir
-      apiService.login({
-        email: 'test@example.com',
-        password: 'password123'
-      }).then(() => {
-        console.log('[DEBUG] Login automático exitoso, continuando...');
-        loadAvatars();
-        loadUserTokens();
-        loadChatHistory();
-      }).catch(error => {
-        console.log('[DEBUG] Error en login automático:', error);
-        window.location.href = '/login';
-      });
-      return;
-    }
-    
     loadAvatars();
     loadUserTokens();
     loadChatHistory();
@@ -249,23 +228,6 @@ export default function ChatPage() {
     });
   };
 
-  if (!apiService.isAuthenticated()) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-red-900 flex items-center justify-center">
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Acceso Requerido</h2>
-          <p className="text-white/80 mb-6">Necesitas iniciar sesión para acceder al chat.</p>
-          <a
-            href="/"
-            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all duration-300"
-          >
-            Ir al Inicio
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-gradient-to-br from-purple-900 via-pink-900 to-red-900 min-h-screen">
       {/* Header local unificado: selector de avatares + tokens + limpiar chat */}
@@ -424,5 +386,13 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <AuthGuard>
+      <ChatPageContent />
+    </AuthGuard>
   );
 } 
