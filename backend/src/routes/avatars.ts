@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { CharacterDevelopmentService } from '../services/characterDevelopment';
-import { AvatarExtendedMemoryService } from '../services/avatarExtendedMemory';
-import { AvatarSyncService } from '../services/avatarSyncService';
+import { CharacterDevelopmentService } from '../services/characterDevelopment.js';
+import { AvatarExtendedMemoryService } from '../services/avatarExtendedMemory.js';
+import { AvatarSyncService } from '../services/avatarSyncService.js';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

@@ -1,8 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { AIService, ChatContext, ConversationMemory } from '../services/aiService.js';
-import { AvatarExtendedMemoryService } from '../services/avatarExtendedMemory';
-import { AvatarSyncService } from '../services/avatarSyncService';
+import { AvatarExtendedMemoryService } from '../services/avatarExtendedMemory.js';
+import { AvatarSyncService } from '../services/avatarSyncService.js';
 import { DatabaseService } from '../services/database.js';
 
 // Esquemas de validación
