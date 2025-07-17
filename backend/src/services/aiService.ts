@@ -1,5 +1,5 @@
 import { Avatar } from '../types/index.js';
-import { CharacterDevelopmentService } from './characterDevelopment';
+import { CharacterDevelopmentService } from './characterDevelopment.js';
 import { getVeniceResponse } from './veniceAI.js';
 import { promises as fs } from 'fs';
 import path from 'path';

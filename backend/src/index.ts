@@ -11,14 +11,14 @@ dotenv.config();
 
 
 // Importar middleware
-import { setupAuth } from './middleware/auth';
+import { setupAuth } from './middleware/auth.js';
 
 // Importar rutas
-import authRoutes from './routes/auth';
-import chatRoutes from './routes/chat';
-import avatarRoutes from './routes/avatars';
-import paymentRoutes from './routes/payments';
-import adminRoutes from './routes/admin';
+import authRoutes from './routes/auth.js';
+import chatRoutes from './routes/chat.js';
+import avatarRoutes from './routes/avatars.js';
+import paymentRoutes from './routes/payments.js';
+import adminRoutes from './routes/admin.js';
 
 const fastify = Fastify({
   logger: false

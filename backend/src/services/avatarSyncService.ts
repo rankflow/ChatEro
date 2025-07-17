@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { AvatarExtendedMemoryService } from './avatarExtendedMemory';
+import { AvatarExtendedMemoryService } from './avatarExtendedMemory.js';
 import path from 'path';
 import fs from 'fs';
 

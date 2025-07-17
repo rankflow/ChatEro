@@ -1,4 +1,4 @@
-import { AIService } from './aiService';
+import { AIService } from './aiService.js';
 
 export interface CharacterProfile {
   name: string;
