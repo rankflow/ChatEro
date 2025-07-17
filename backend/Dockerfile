@@ -5,8 +5,8 @@ WORKDIR /app
 # Copiar package.json y package-lock.json
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci --only=production
+# Instalar todas las dependencias (incluyendo devDependencies para compilación)
+RUN npm ci
 
 # Copiar código fuente
 COPY . .
@@ -16,6 +16,9 @@ RUN npx prisma generate
 
 # Construir la aplicación
 RUN npm run build
+
+# Eliminar devDependencies después de la compilación
+RUN npm prune --production
 
 # Exponer puerto
 EXPOSE 3001
