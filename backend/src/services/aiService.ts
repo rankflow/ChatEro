@@ -40,6 +40,12 @@ export class AIService {
     context: ChatContext
   ): Promise<{ message: string; tokensUsed: number }> {
     try {
+      console.log(`[generateChatResponse] Contexto recibido:`, {
+        avatar: context.avatar ? `ID: ${context.avatar.id}, Name: ${context.avatar.name}` : 'undefined',
+        historyLength: context.conversationHistory?.length || 0,
+        hasMemory: !!context.conversationMemory
+      });
+      
       // Construir el prompt del sistema basado en el avatar
       const systemPrompt = await this.buildSystemPrompt(context.avatar?.id);
       
@@ -314,7 +320,8 @@ Formato: Resumen conciso de 10 oraciones máximo.`;
   /**
    * Mapea los IDs de avatar a nombres de archivo
    */
-  private static mapAvatarIdToFileName(avatarId: string): string {
+  private static async mapAvatarIdToFileName(avatarId: string): Promise<string> {
+    // Mapeo directo para nombres conocidos
     const avatarMap: { [key: string]: string } = {
       'avatar_1': 'luna',
       'avatar_2': 'sofia', 
@@ -331,36 +338,97 @@ Formato: Resumen conciso de 10 oraciones máximo.`;
       'venus': 'venus'
     };
     
-    return avatarMap[avatarId] || 'luna'; // Fallback a luna si no existe
+    // Si es un mapeo directo conocido, usarlo
+    if (avatarMap[avatarId]) {
+      return avatarMap[avatarId];
+    }
+    
+    // Si no es un mapeo directo, buscar en la base de datos
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      const prisma = new PrismaClient();
+      
+      // Primero intentar buscar por ID exacto
+      let avatar = await prisma.avatar.findUnique({
+        where: { id: avatarId }
+      });
+      
+      // Si no se encuentra, intentar buscar por nombre (por si el ID es un nombre)
+      if (!avatar) {
+        avatar = await prisma.avatar.findFirst({
+          where: { 
+            name: avatarId.charAt(0).toUpperCase() + avatarId.slice(1)
+          }
+        });
+      }
+      
+      await prisma.$disconnect();
+      
+      if (avatar) {
+        console.log(`[mapAvatarIdToFileName] Avatar encontrado: ${avatar.name} (ID: ${avatar.id})`);
+        
+        // Mapear el nombre del avatar al nombre del archivo
+        const nameMap: { [key: string]: string } = {
+          'Aria': 'aria',
+          'Luna': 'luna',
+          'Sofia': 'sofia',
+          'Venus': 'venus'
+        };
+        
+        const fileName = nameMap[avatar.name] || 'luna';
+        console.log(`[mapAvatarIdToFileName] Mapeado ${avatar.name} -> ${fileName}.txt`);
+        return fileName;
+      } else {
+        console.log(`[mapAvatarIdToFileName] No se encontró avatar con ID: ${avatarId}`);
+      }
+    } catch (error) {
+      console.error(`[mapAvatarIdToFileName] Error buscando avatar en BD: ${avatarId}`, error);
+    }
+    
+    console.log(`[mapAvatarIdToFileName] Usando fallback: luna.txt`);
+    return 'luna'; // Fallback por defecto
   }
 
   /**
    * Construye el prompt del sistema basado en el avatar seleccionado
-   * Nuevo diseño: Un único prompt específico por avatar
+   * Lee el prompt desde archivos .txt en la carpeta prompts/avatars/
    */
   private static async buildSystemPrompt(avatarId?: string): Promise<string> {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-
+    console.log(`[buildSystemPrompt] Iniciando con avatarId: ${avatarId}`);
+    
     if (!avatarId) {
-      // Sin avatar seleccionado, devolver prompt vacío o mensaje de error
+      console.log(`[buildSystemPrompt] No hay avatarId, devolviendo prompt por defecto`);
       return 'Por favor, selecciona un avatar para comenzar la conversación.';
     }
 
-    const fileName = this.mapAvatarIdToFileName(avatarId);
-    const avatarPath = path.resolve(__dirname, `../prompts/avatars/${fileName}.txt`);
-    
-    console.log(`[DEBUG] Avatar ID: ${avatarId}`);
-    console.log(`[DEBUG] Mapped to: ${fileName}`);
-    console.log(`[DEBUG] File path: ${avatarPath}`);
-    
     try {
-      const avatarPrompt = await fs.readFile(avatarPath, 'utf-8');
-      console.log(`[DEBUG] Successfully loaded prompt for: ${fileName}`);
-      return avatarPrompt.trim();
-    } catch (err) {
-      console.warn(`[buildSystemPrompt] Avatar prompt not found for: ${avatarId} (mapped to: ${fileName})`);
-      console.error(`[DEBUG] Error details:`, err);
+      console.log(`[buildSystemPrompt] Mapeando avatarId: ${avatarId}`);
+      
+      // Mapear el ID del avatar al nombre del archivo
+      const fileName = await this.mapAvatarIdToFileName(avatarId);
+      console.log(`[buildSystemPrompt] Nombre de archivo mapeado: ${fileName}`);
+      
+      const filePath = path.join(process.cwd(), 'src', 'prompts', 'avatars', `${fileName}.txt`);
+      console.log(`[buildSystemPrompt] Ruta del archivo: ${filePath}`);
+      
+      // Verificar si el archivo existe
+      try {
+        await fs.access(filePath);
+        console.log(`[buildSystemPrompt] Archivo existe: ${filePath}`);
+      } catch (accessError) {
+        console.error(`[buildSystemPrompt] Archivo no existe: ${filePath}`);
+        return 'Por favor, selecciona un avatar válido para comenzar la conversación.';
+      }
+      
+      // Leer el archivo de prompt
+      const prompt = await fs.readFile(filePath, 'utf-8');
+      console.log(`[buildSystemPrompt] Prompt leído desde archivo: ${fileName}.txt para avatarId: ${avatarId}`);
+      console.log(`[buildSystemPrompt] Longitud del prompt: ${prompt.length} caracteres`);
+      
+      return prompt;
+      
+    } catch (error) {
+      console.error(`[buildSystemPrompt] Error leyendo prompt para ${avatarId}:`, error);
       return 'Por favor, selecciona un avatar válido para comenzar la conversación.';
     }
   }

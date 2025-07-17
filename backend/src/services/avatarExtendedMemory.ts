@@ -1,5 +1,6 @@
-import fs from 'fs';
-import path from 'path';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export interface AvatarExtendedData {
   name: string;
@@ -208,7 +209,7 @@ export class AvatarExtendedMemoryService {
   /**
    * Obtiene un detalle específico del avatar basado en la intención del usuario
    */
-  static getAvatarDetail(avatarId: string, userIntent: string): string | null {
+  static async getAvatarDetail(avatarId: string, userIntent: string): Promise<string | null> {
     try {
       // Normalizar el avatarId y extraer el nombre del avatar
       const normalizedAvatarId = avatarId.toLowerCase();
@@ -220,7 +221,7 @@ export class AvatarExtendedMemoryService {
       console.log(`[AVATAR_MEMORY] Nombre extraído: ${avatarName}`);
       
       // Cargar datos del avatar (usando cache si está disponible)
-      const avatarData = this.loadAvatarData(avatarName);
+      const avatarData = await this.loadAvatarData(avatarName);
       if (!avatarData) {
         console.log(`[AVATAR_MEMORY] No se encontraron datos para avatar: ${avatarId}`);
         return null;
@@ -251,24 +252,71 @@ export class AvatarExtendedMemoryService {
   }
   
   /**
-   * Carga los datos del avatar desde el archivo JSON
+   * Carga los datos del avatar desde la base de datos
    */
-  private static loadAvatarData(avatarId: string): AvatarExtendedData | null {
+  private static async loadAvatarData(avatarId: string): Promise<AvatarExtendedData | null> {
     // Verificar cache primero
     if (avatarCache.has(avatarId)) {
       return avatarCache.get(avatarId)!;
     }
     
     try {
-      const filePath = path.join(process.cwd(), 'src', 'prompts', 'avatars', 'extended', `${avatarId}_extended.json`);
+      console.log(`[AVATAR_MEMORY] Buscando avatar en base de datos: ${avatarId}`);
       
-      if (!fs.existsSync(filePath)) {
-        console.log(`[AVATAR_MEMORY] Archivo no encontrado: ${filePath}`);
+      // Primero intentar buscar por ID exacto (si es un ID de base de datos)
+      let avatar = null;
+      if (avatarId.length > 20) { // IDs cuid son largos
+        console.log(`[AVATAR_MEMORY] Buscando avatar por ID: ${avatarId}`);
+        avatar = await prisma.avatar.findUnique({
+          where: { id: avatarId }
+        });
+      }
+      
+      // Si no se encuentra por ID, intentar buscar por nombre
+      if (!avatar) {
+        console.log(`[AVATAR_MEMORY] Buscando avatar por nombre: ${avatarId}`);
+        avatar = await prisma.avatar.findFirst({
+          where: { 
+            name: avatarId.charAt(0).toUpperCase() + avatarId.slice(1)
+          }
+        });
+      }
+      
+      if (!avatar) {
+        console.log(`[AVATAR_MEMORY] Avatar no encontrado en BD: ${avatarId}`);
         return null;
       }
       
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-      const avatarData: AvatarExtendedData = JSON.parse(fileContent);
+      // Convertir datos de BD al formato esperado
+      const avatarData: AvatarExtendedData = {
+        name: avatar.name,
+        age: avatar.age || 0,
+        occupation: avatar.occupation || '',
+        origin: avatar.origin || '',
+        background: avatar.background || '',
+        personalityTraits: avatar.personalityTraits || '',
+        interests: avatar.interests || '',
+        fears: avatar.fears || '',
+        dreams: avatar.dreams || '',
+        secrets: avatar.secrets || '',
+        relationships: avatar.relationships || '',
+        lifeExperiences: avatar.lifeExperiences || '',
+        communicationStyle: avatar.communicationStyle || '',
+        emotionalState: avatar.emotionalState || '',
+        motivations: avatar.motivations || '',
+        conflicts: avatar.conflicts || '',
+        growth: avatar.growth || '',
+        voiceType: avatar.voiceType || '',
+        accent: avatar.accent || '',
+        mannerisms: avatar.mannerisms || '',
+        style: avatar.style || '',
+        scent: avatar.scent || '',
+        chatStyle: avatar.chatStyle || '',
+        topics: avatar.topics || '',
+        boundaries: avatar.boundaries || '',
+        kinks: avatar.kinks || '',
+        roleplay: avatar.roleplay || ''
+      };
       
       // Guardar en cache
       avatarCache.set(avatarId, avatarData);
@@ -359,9 +407,9 @@ export class AvatarExtendedMemoryService {
   /**
    * Obtiene todos los datos del avatar (útil para debugging)
    */
-  static getAvatarFullData(avatarId: string): AvatarExtendedData | null {
+  static async getAvatarFullData(avatarId: string): Promise<AvatarExtendedData | null> {
     const normalizedAvatarId = avatarId.toLowerCase();
     const avatarName = normalizedAvatarId.replace('avatar_', '');
-    return this.loadAvatarData(avatarName);
+    return await this.loadAvatarData(avatarName);
   }
 } 

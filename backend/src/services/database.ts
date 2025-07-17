@@ -85,14 +85,52 @@ export class DatabaseService {
     tokensUsed: number = 0
   ): Promise<Message | null> {
     try {
-      const message = await prisma.message.create({
-        data: {
-          userId,
-          content,
-          isUser,
-          avatarId,
-          tokensUsed
+      // Manejar diferentes formatos de avatarId
+      let realAvatarId = avatarId;
+      
+                    if (avatarId) {
+        console.log(`[saveMessage] Procesando avatarId: ${avatarId}`);
+        
+        // Si es un ID de base de datos (formato cuid), verificar que existe
+        if (avatarId.length > 20) { // IDs cuid son largos
+          console.log(`[saveMessage] Buscando avatar por ID: ${avatarId}`);
+          const avatar = await prisma.avatar.findUnique({
+            where: { id: avatarId }
+          });
+          realAvatarId = avatar?.id || undefined;
+          console.log(`[saveMessage] Avatar encontrado por ID: ${avatar?.name} (${avatar?.id})`);
         }
+        // Si es del formato "avatar_aria", buscar el avatar real
+        else if (avatarId.startsWith('avatar_')) {
+          console.log(`[saveMessage] Buscando avatar por nombre: ${avatarId}`);
+          const avatarName = avatarId.replace('avatar_', '');
+          const avatar = await prisma.avatar.findFirst({
+            where: { 
+              name: avatarName.charAt(0).toUpperCase() + avatarName.slice(1)
+            }
+          });
+          realAvatarId = avatar?.id || undefined;
+          console.log(`[saveMessage] Avatar encontrado por nombre: ${avatar?.name} (${avatar?.id})`);
+        }
+      }
+      
+      console.log(`[saveMessage] realAvatarId final: ${realAvatarId}`);
+
+      const messageData: any = {
+        userId,
+        content,
+        isUser,
+        tokensUsed
+      };
+      
+      if (realAvatarId) {
+        messageData.avatarId = realAvatarId;
+      }
+      
+      console.log(`[saveMessage] Datos a guardar:`, JSON.stringify(messageData, null, 2));
+      
+      const message = await prisma.message.create({
+        data: messageData
       });
       return message as Message;
     } catch (error) {

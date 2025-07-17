@@ -1,6 +1,9 @@
-import fs from 'fs';
-import path from 'path';
+import { PrismaClient } from '@prisma/client';
 import { AvatarExtendedMemoryService } from './avatarExtendedMemory';
+import path from 'path';
+import fs from 'fs';
+
+const prisma = new PrismaClient();
 
 export interface SyncedAvatarData {
   // Datos básicos (del prompt fijo)
@@ -52,28 +55,26 @@ export interface SyncedAvatarData {
 export class AvatarSyncService {
   
   /**
-   * Sincroniza todos los avatares disponibles
+   * Sincroniza todos los avatares disponibles desde la base de datos
    */
   static async syncAllAvatars(): Promise<SyncedAvatarData[]> {
     try {
-      const avatarsDir = path.join(process.cwd(), 'src', 'prompts', 'avatars');
-      const extendedDir = path.join(avatarsDir, 'extended');
-      
-      // Obtener todos los archivos .txt (prompts fijos)
-      const promptFiles = fs.readdirSync(avatarsDir)
-        .filter(file => file.endsWith('.txt'))
-        .map(file => file.replace('.txt', ''));
+      // Obtener todos los avatares desde la base de datos
+      const avatars = await prisma.avatar.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' }
+      });
       
       const syncedAvatars: SyncedAvatarData[] = [];
       
-      for (const avatarName of promptFiles) {
-        const syncedData = await this.syncAvatar(avatarName);
+      for (const avatar of avatars) {
+        const syncedData = await this.syncAvatarFromDB(avatar);
         if (syncedData) {
           syncedAvatars.push(syncedData);
         }
       }
       
-      console.log(`[AVATAR_SYNC] Sincronizados ${syncedAvatars.length} avatares`);
+      console.log(`[AVATAR_SYNC] Sincronizados ${syncedAvatars.length} avatares desde BD`);
       return syncedAvatars;
       
     } catch (error) {
@@ -83,33 +84,104 @@ export class AvatarSyncService {
   }
   
   /**
-   * Sincroniza un avatar específico
+   * Sincroniza un avatar específico desde la base de datos
    */
   static async syncAvatar(avatarName: string): Promise<SyncedAvatarData | null> {
     try {
       console.log(`[AVATAR_SYNC] Sincronizando avatar: ${avatarName}`);
       
-      // Cargar prompt fijo
-      const promptData = this.loadPromptData(avatarName);
-      if (!promptData) {
-        console.log(`[AVATAR_SYNC] No se encontró prompt para: ${avatarName}`);
+      // Primero intentar buscar por ID exacto
+      let avatar = await prisma.avatar.findUnique({
+        where: { id: avatarName }
+      });
+      
+      // Si no se encuentra por ID, intentar buscar por nombre
+      if (!avatar) {
+        console.log(`[AVATAR_SYNC] No se encontró por ID, buscando por nombre: ${avatarName}`);
+        avatar = await prisma.avatar.findFirst({
+          where: { 
+            name: avatarName.charAt(0).toUpperCase() + avatarName.slice(1)
+          }
+        });
+      }
+      
+      if (!avatar) {
+        console.log(`[AVATAR_SYNC] No se encontró avatar en BD: ${avatarName}`);
         return null;
       }
       
-      // Cargar datos extendidos
-      const extendedData = AvatarExtendedMemoryService.getAvatarFullData(`avatar_${avatarName}`);
+      console.log(`[AVATAR_SYNC] Avatar encontrado: ${avatar.name} (ID: ${avatar.id})`);
       
-      // Combinar datos
-      const syncedData = this.combineData(avatarName, promptData, extendedData);
-      
-      // Guardar archivo sincronizado
-      await this.saveSyncedData(avatarName, syncedData);
+      // Generar datos sincronizados desde BD
+      const syncedData = await this.syncAvatarFromDB(avatar);
       
       console.log(`[AVATAR_SYNC] Avatar ${avatarName} sincronizado correctamente`);
       return syncedData;
       
     } catch (error) {
       console.error(`[AVATAR_SYNC] Error sincronizando avatar ${avatarName}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Sincroniza un avatar desde los datos de la base de datos
+   */
+  static async syncAvatarFromDB(avatar: any): Promise<SyncedAvatarData | null> {
+    try {
+      console.log(`[AVATAR_SYNC] Sincronizando avatar desde BD: ${avatar.name}`);
+      
+      // Generar datos sincronizados
+      const syncedData: SyncedAvatarData = {
+        id: avatar.id,
+        name: avatar.name,
+        description: avatar.description || '',
+        personality: avatar.personality || '',
+        imageUrl: avatar.imageUrl || `/api/avatars/${avatar.id}/image`,
+        isPremium: avatar.isPremium || false,
+        category: avatar.category || 'personalizado',
+        isActive: avatar.isActive || true,
+        createdAt: avatar.createdAt,
+        updatedAt: avatar.updatedAt,
+        
+        // Datos extendidos
+        age: avatar.age || undefined,
+        occupation: avatar.occupation || undefined,
+        origin: avatar.origin || undefined,
+        background: avatar.background || undefined,
+        personalityTraits: avatar.personalityTraits || undefined,
+        interests: avatar.interests || undefined,
+        fears: avatar.fears || undefined,
+        dreams: avatar.dreams || undefined,
+        secrets: avatar.secrets || undefined,
+        relationships: avatar.relationships || undefined,
+        lifeExperiences: avatar.lifeExperiences || undefined,
+        communicationStyle: avatar.communicationStyle || undefined,
+        emotionalState: avatar.emotionalState || undefined,
+        motivations: avatar.motivations || undefined,
+        conflicts: avatar.conflicts || undefined,
+        growth: avatar.growth || undefined,
+        voiceType: avatar.voiceType || undefined,
+        accent: avatar.accent || undefined,
+        mannerisms: avatar.mannerisms || undefined,
+        style: avatar.style || undefined,
+        scent: avatar.scent || undefined,
+        chatStyle: avatar.chatStyle || undefined,
+        topics: avatar.topics || undefined,
+        boundaries: avatar.boundaries || undefined,
+        kinks: avatar.kinks || undefined,
+        roleplay: avatar.roleplay || undefined,
+        
+        // Datos combinados
+        fullPersonality: this.combinePersonality(avatar.personality, avatar.personalityTraits),
+        fullInterests: avatar.interests || '',
+        fullBackground: this.combineBackground(avatar.description, avatar.background)
+      };
+      
+      return syncedData;
+      
+    } catch (error) {
+      console.error(`[AVATAR_SYNC] Error sincronizando avatar desde BD:`, error);
       return null;
     }
   }
@@ -324,23 +396,46 @@ export class AvatarSyncService {
   }
   
   /**
-   * Obtiene los datos sincronizados de un avatar
+   * Obtiene los datos sincronizados de un avatar desde la base de datos
    */
-  static getSyncedAvatarData(avatarName: string): SyncedAvatarData | null {
+  static async getSyncedAvatarData(avatarName: string): Promise<SyncedAvatarData | null> {
     try {
-      const syncedDir = path.join(process.cwd(), 'src', 'prompts', 'avatars', 'synced');
-      const filePath = path.join(syncedDir, `${avatarName}_synced.json`);
+      // Buscar avatar en la base de datos
+      const avatar = await prisma.avatar.findFirst({
+        where: { 
+          name: avatarName.charAt(0).toUpperCase() + avatarName.slice(1)
+        }
+      });
       
-      if (!fs.existsSync(filePath)) {
+      if (!avatar) {
         return null;
       }
       
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-      return JSON.parse(fileContent);
+      // Generar datos sincronizados
+      return await this.syncAvatarFromDB(avatar);
       
     } catch (error) {
       console.error(`[AVATAR_SYNC] Error cargando datos sincronizados:`, error);
       return null;
     }
+  }
+
+  /**
+   * Combina la personalidad básica con los rasgos de personalidad
+   */
+  private static combinePersonality(basicPersonality?: string, personalityTraits?: string): string {
+    if (!basicPersonality && !personalityTraits) {
+      return 'Personalidad única y atractiva';
+    }
+    
+    if (!basicPersonality) {
+      return personalityTraits || '';
+    }
+    
+    if (!personalityTraits) {
+      return basicPersonality;
+    }
+    
+    return `${basicPersonality}. ${personalityTraits}`;
   }
 } 

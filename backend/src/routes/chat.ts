@@ -78,7 +78,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         const avatarName = avatarId.replace('avatar_', '');
         
         // Obtener datos sincronizados del avatar
-        const syncedData = AvatarSyncService.getSyncedAvatarData(avatarName);
+        const syncedData = await AvatarSyncService.getSyncedAvatarData(avatarName);
         
         if (syncedData) {
           avatar = {
@@ -149,7 +149,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         console.log(`[DEBUG] Mensaje del usuario: "${message}"`);
         
         // Buscar dato relevante en la memoria extendida
-        const fichaDato = AvatarExtendedMemoryService.getAvatarDetail(avatarId, message);
+        const fichaDato = await AvatarExtendedMemoryService.getAvatarDetail(avatarId, message);
         if (fichaDato) {
           extraFicha = `\nDato de ficha: ${avatar?.name || avatarId} ${fichaDato}`;
           console.log(`[DEBUG] ✅ Dato encontrado en memoria extendida: ${fichaDato}`);
@@ -163,12 +163,16 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       // --- FIN INTEGRACIÓN ---
 
       // Preparar contexto para Venice AI con memoria
+      console.log(`[DEBUG] Avatar antes del contexto:`, avatar ? `ID: ${avatar.id}, Name: ${avatar.name}` : 'undefined');
+      
       const chatContext: ChatContext = {
         avatar: avatar,
         conversationHistory: history,
         userPreferences: context,
         conversationMemory: memory
       };
+      
+      console.log(`[DEBUG] Contexto creado con avatar:`, chatContext.avatar ? `ID: ${chatContext.avatar.id}` : 'undefined');
 
       // Añadir dato de ficha al contexto si se encontró
       if (extraFicha) {

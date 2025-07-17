@@ -52,7 +52,7 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
       const avatarName = id.replace('avatar_', '');
       
       // Obtener datos sincronizados del avatar
-      const syncedData = AvatarSyncService.getSyncedAvatarData(avatarName);
+      const syncedData = await AvatarSyncService.getSyncedAvatarData(avatarName);
       
       if (!syncedData) {
         // Si no hay datos sincronizados, sincronizar primero
@@ -117,7 +117,7 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
       const avatarName = id.replace('avatar_', '');
       
       // Obtener datos sincronizados del avatar
-      const syncedData = AvatarSyncService.getSyncedAvatarData(avatarName);
+      const syncedData = await AvatarSyncService.getSyncedAvatarData(avatarName);
       
       if (syncedData && syncedData.imageUrl) {
         // Si tenemos una URL de imagen real, redirigir a ella
@@ -189,7 +189,7 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
       const avatarName = id.replace('avatar_', '');
       
       // Obtener datos sincronizados del avatar
-      const syncedData = AvatarSyncService.getSyncedAvatarData(avatarName);
+      const syncedData = await AvatarSyncService.getSyncedAvatarData(avatarName);
       
       if (!syncedData) {
         // Si no hay datos sincronizados, sincronizar primero
@@ -237,7 +237,7 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
       }
 
       // Obtener detalle usando el servicio de memoria extendida
-      const detail = AvatarExtendedMemoryService.getAvatarDetail(id, intent);
+      const detail = await AvatarExtendedMemoryService.getAvatarDetail(id, intent);
 
       if (!detail) {
         return reply.status(404).send({
@@ -268,7 +268,7 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       // Obtener todos los datos extendidos
-      const extendedData = AvatarExtendedMemoryService.getAvatarFullData(id);
+      const extendedData = await AvatarExtendedMemoryService.getAvatarFullData(id);
 
       if (!extendedData) {
         return reply.status(404).send({
