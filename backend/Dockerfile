@@ -1,5 +1,11 @@
 FROM node:18-alpine
 
+# Instalar dependencias del sistema necesarias para Prisma
+RUN apk add --no-cache \
+    openssl \
+    libc6-compat \
+    && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
 # Copiar package.json y package-lock.json
