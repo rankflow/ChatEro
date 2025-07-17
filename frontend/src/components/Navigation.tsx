@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { Heart, User, LogOut } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import Image from 'next/image';
 
 export default function Navigation() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -55,8 +56,8 @@ export default function Navigation() {
       <header className="bg-white/80 backdrop-blur-sm border-b border-pink-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-              <Heart className="h-8 w-8 text-pink-500" />
+            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <Image src="/logo.svg" alt="Chat Ero Logo" width={48} height={48} className="h-12 w-12" />
               <span className="text-2xl font-bold text-gray-900">Chat Ero</span>
             </Link>
             <div className="flex space-x-4">
@@ -73,10 +74,10 @@ export default function Navigation() {
     <header className="bg-white/80 backdrop-blur-sm border-b border-pink-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-            <Heart className="h-8 w-8 text-pink-500" />
-            <span className="text-2xl font-bold text-gray-900">Chat Ero</span>
-          </Link>
+                      <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <Image src="/logo.svg" alt="Chat Ero Logo" width={48} height={48} className="h-12 w-12" />
+              <span className="text-2xl font-bold text-gray-900">Chat Ero</span>
+            </Link>
           
           <nav className="hidden md:flex space-x-8">
             <Link href="/#features" className="text-gray-600 hover:text-pink-500 transition-colors">
@@ -104,6 +105,12 @@ export default function Navigation() {
                   className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors text-sm"
                 >
                   Ir al Chat
+                </Link>
+                <Link 
+                  href="/payments" 
+                  className="text-gray-600 hover:text-purple-500 transition-colors px-4 py-2 rounded-lg flex items-center"
+                >
+                  💰 Comprar Tokens
                 </Link>
                 <button
                   onClick={handleLogout}

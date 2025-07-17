@@ -13,7 +13,8 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx src/scripts/seed.ts",
     "db:seed:avatars": "tsx src/scripts/seed-avatars.ts",
-    "db:migrate:json": "tsx scripts/migrate-json-to-db.ts"
+    "db:migrate:json": "tsx scripts/migrate-json-to-db.ts",
+    "stripe:setup": "tsx scripts/setup-stripe.ts"
   },
   "keywords": [
     "chat",

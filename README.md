@@ -23,9 +23,13 @@ Un MVP innovador que combina chat con inteligencia artificial (GPT-4o) y avatare
 - Rate limiting y protección CORS
 
 ### 💰 **Sistema de Monetización**
-- Control de tokens por usuario
-- Consumo de tokens por mensaje
-- Base preparada para integración con Stripe
+- ✅ Integración completa con Stripe
+- ✅ Payment Intents para pagos únicos
+- ✅ Suscripciones recurrentes
+- ✅ Webhooks automáticos
+- ✅ Control de tokens por usuario
+- ✅ Consumo automático de tokens
+- ✅ Historial de pagos completo
 
 ## 🏗️ Arquitectura del Proyecto
 
@@ -62,10 +66,10 @@ Chat Ero/
 - [x] **Datos de prueba** - Usuarios y mensajes de ejemplo
 
 ### 🔄 **En Desarrollo**
-- [ ] Integración con Stripe para pagos
 - [ ] Generación de imágenes de avatares con DALL-E
 - [ ] Sistema de notificaciones
 - [ ] Analytics y métricas
+- [ ] Panel de administración avanzado
 
 ### 📋 **Próximas Funcionalidades**
 - [ ] Dashboard de administración
@@ -81,6 +85,7 @@ Chat Ero/
 - **Prisma** - ORM para base de datos
 - **SQLite** - Base de datos
 - **OpenAI API** - GPT-4o y moderación
+- **Stripe** - Procesamiento de pagos
 - **JWT** - Autenticación
 - **bcryptjs** - Encriptación de contraseñas
 - **Zod** - Validación de esquemas
@@ -89,6 +94,7 @@ Chat Ero/
 - **Next.js 15** - Framework React
 - **TypeScript** - Tipado estático
 - **Tailwind CSS** - Estilos
+- **Stripe.js** - Integración de pagos
 - **React Hooks** - Estado y efectos
 
 ## 📦 Instalación y Configuración
@@ -118,7 +124,7 @@ cd ../frontend && npm install
 
 ### 3. Configurar variables de entorno
 
-**Backend** (`backend/.env`):
+**Backend** (`backend/env`):
 ```env
 # Configuración del servidor
 PORT=3001
@@ -134,14 +140,22 @@ JWT_SECRET=tu-jwt-secret-super-seguro-aqui
 # OpenAI
 OPENAI_API_KEY=sk-tu-openai-api-key-real-aqui
 
+# Stripe Configuration
+STRIPE_SECRET_KEY=sk_test_tu-stripe-secret-key-aqui
+STRIPE_PUBLISHABLE_KEY=pk_test_tu-stripe-publishable-key-aqui
+STRIPE_WEBHOOK_SECRET=whsec_tu-stripe-webhook-secret-aqui
+
 # Frontend URL (para CORS)
 FRONTEND_URL=http://localhost:3000
 ```
 
-**Frontend** (`frontend/.env`):
+**Frontend** (`frontend/.env.local`):
 ```env
 # Backend API URL
 NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# Stripe Configuration
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_tu-stripe-publishable-key-aqui
 ```
 
 ### 4. Configurar base de datos
@@ -156,6 +170,9 @@ npm run db:push
 
 # Poblar con datos de prueba
 npm run db:seed
+
+# Configurar productos de Stripe (opcional)
+npm run stripe:setup
 ```
 
 ### 5. Ejecutar el proyecto
@@ -197,6 +214,13 @@ Password: password123
 - `GET /api/avatars` - Listar avatares
 - `GET /api/avatars/:id` - Obtener avatar específico
 
+### Pagos
+- `POST /api/payments/create-intent` - Crear Payment Intent
+- `GET /api/payments/packages` - Obtener paquetes
+- `POST /api/payments/webhook` - Webhook de Stripe
+- `GET /api/payments/history` - Historial de pagos
+- `GET /api/payments/customer-info` - Info del cliente
+
 ## 🎯 Funcionalidades del Chat
 
 ### Personalidades de Avatares
@@ -208,9 +232,10 @@ Password: password123
 6. **Maya** - Sabia, espiritual, comprensiva
 
 ### Sistema de Tokens
-- Cada mensaje consume tokens
+- Cada mensaje consume tokens automáticamente
 - Control de límites por usuario
-- Base preparada para monetización
+- Sistema de pagos integrado con Stripe
+- Suscripciones y paquetes de tokens
 
 ## 🔒 Seguridad y Cumplimiento
 
