@@ -10,8 +10,8 @@ WORKDIR /app
 # Copiar solo la carpeta backend
 COPY backend/ .
 
-# Instalar dependencias
-RUN npm ci --only=production
+# Instalar dependencias (incluyendo devDependencies para TypeScript)
+RUN npm ci
 
 # Construir la aplicación
 RUN npm run build
