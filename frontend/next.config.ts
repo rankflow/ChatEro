@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Forzar redeploy
+  experimental: {
+    forceSwcTransforms: true,
+  },
 };
 
 export default nextConfig;
