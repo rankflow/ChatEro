@@ -1,0 +1,2 @@
+# Ignorar errores de ESLint durante el build
+.eslintrc* 

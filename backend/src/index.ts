@@ -26,7 +26,12 @@ const fastify = Fastify({
 
 // Registrar plugins
 await fastify.register(cors, {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://chat-ero-1.vercel.app',
+    'https://chatero.chat',
+    'https://*.vercel.app'
+  ],
   credentials: true
 });
 

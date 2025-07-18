@@ -31,13 +31,23 @@ export default function AvatarsPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch('http://localhost:3001/api/avatars')
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    
+    fetch(`${API_BASE_URL}/api/avatars`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        'Content-Type': 'application/json'
+      }
+    })
       .then(res => res.json())
       .then(data => {
         setAvatars(data.avatars || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((error) => {
+        console.error('Error cargando avatares:', error);
+        setLoading(false);
+      });
   }, []);
 
   const filteredAvatars = avatars.filter(avatar => {

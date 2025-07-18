@@ -29,7 +29,12 @@ export default function LoginPage() {
         setError(response.message || 'Error al iniciar sesión');
       }
     } catch (err) {
-      setError('Error de conexión. Intenta de nuevo.');
+      console.error('Error de login:', err);
+      if (err instanceof Error) {
+        setError(`Error: ${err.message}`);
+      } else {
+        setError('Error de conexión. Intenta de nuevo.');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -78,7 +78,8 @@ class ApiService {
     });
 
     if (!response.ok) {
-      throw new Error('Error en el login');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error en el login: ${response.status}`);
     }
 
     const data = await response.json();
