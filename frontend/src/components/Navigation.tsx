@@ -57,7 +57,7 @@ export default function Navigation() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <Image src="/logo.svg" alt="Chat Ero Logo" width={48} height={48} className="h-12 w-12" />
+              <Image src="/api/logo" alt="Chat Ero Logo" width={48} height={48} className="h-12 w-12" />
               <span className="text-2xl font-bold text-gray-900">Chat Ero</span>
             </Link>
             <div className="flex space-x-4">
@@ -75,7 +75,7 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
                       <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <Image src="/logo.svg" alt="Chat Ero Logo" width={48} height={48} className="h-12 w-12" />
+              <Image src="/api/logo" alt="Chat Ero Logo" width={48} height={48} className="h-12 w-12" />
               <span className="text-2xl font-bold text-gray-900">Chat Ero</span>
             </Link>
           
