@@ -4,7 +4,7 @@ HOST=0.0.0.0
 NODE_ENV=development
 
 # Base de datos
-DATABASE_URL="file:./prisma/prisma/dev.db"
+DATABASE_URL="file:./dev.db"
 
 # JWT
 JWT_SECRET=tu-jwt-secret-super-seguro-aqui-cambiar-en-produccion
