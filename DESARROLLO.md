@@ -57,6 +57,20 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_tu-stripe-publishable-key-aqui
 - **Backend**: http://localhost:3001
 - **Prisma Studio**: http://localhost:5555
 
+## 🗄️ Base de Datos
+
+### Desarrollo Local
+```bash
+# Usar schema de desarrollo (SQLite)
+npx prisma studio --schema=./prisma/schema.prisma
+```
+
+### Producción
+```bash
+# Usar schema de producción (PostgreSQL)
+npx prisma studio --schema=./prisma/schema.prod.prisma
+```
+
 ## 📝 Notas Importantes
 - Los archivos `package.dev.json` evitan que Vercel detecte el monorepo como un proyecto Next.js
 - El script `dev.sh` automatiza el proceso de desarrollo
