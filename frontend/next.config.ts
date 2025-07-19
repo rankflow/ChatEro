@@ -7,9 +7,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Forzar redeploy
+  // Configuración compatible con Turbopack
   experimental: {
-    forceSwcTransforms: true,
+    // forceSwcTransforms: true, // Comentado para compatibilidad con Turbopack
   },
 };
 
