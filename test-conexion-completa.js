@@ -7,9 +7,9 @@
 
 const https = require('https');
 
-// URLs de los servicios
-const BACKEND_URL = 'https://chat-ero-production.up.railway.app';
-const FRONTEND_URL = 'https://chat-ero-1.vercel.app';
+// URLs de los servicios (configurables por variables de entorno)
+const BACKEND_URL = process.env.BACKEND_URL || 'https://chat-ero-production.up.railway.app';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://chat-ero-1.vercel.app';
 
 console.log('🧪 Probando conexión completa Chat Ero...\n');
 
@@ -120,7 +120,7 @@ function checkEnvironmentVariables() {
   console.log('\n4️⃣ Variables de entorno necesarias:');
   
   const requiredVars = {
-    'NEXT_PUBLIC_API_URL': 'https://chat-ero-production.up.railway.app',
+    'NEXT_PUBLIC_API_URL': process.env.BACKEND_URL || 'https://chat-ero-production.up.railway.app',
     'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY': 'pk_test_... (tu clave de Stripe)'
   };
 

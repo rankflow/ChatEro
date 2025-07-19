@@ -3,7 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const path = require('path');
 
 // Configuración para PostgreSQL de Railway
-const DATABASE_URL = "postgresql://postgres:MuCqBwxLOSdqFgIDmCxOVyPDtcKGPWjk@turntable.proxy.rlwy.net:48220/railway";
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres:MuCqBwxLOSdqFgIDmCxOVyPDtcKGPWjk@turntable.proxy.rlwy.net:48220/railway";
 
 const postgresPrisma = new PrismaClient({
   datasources: {

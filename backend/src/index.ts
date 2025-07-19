@@ -28,10 +28,8 @@ const fastify = Fastify({
 await fastify.register(cors, {
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://chat-ero-1.vercel.app',
-    'https://chatero.chat',
-    'https://*.vercel.app'
-  ],
+    ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',') || [])
+  ].filter(Boolean),
   credentials: true
 });
 
