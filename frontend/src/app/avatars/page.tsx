@@ -12,6 +12,7 @@ interface Avatar {
   imageUrl: string;
   isPremium: boolean;
   category: string;
+  age?: number;
 }
 
 export default function AvatarsPage() {
@@ -127,7 +128,7 @@ export default function AvatarsPage() {
                 <img
                   src={avatar.imageUrl}
                   alt={avatar.name}
-                  className="w-full h-80 object-cover"
+                  className="w-full h-96 object-cover"
                 />
                 {avatar.isPremium && (
                   <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-semibold flex items-center">
@@ -139,14 +140,22 @@ export default function AvatarsPage() {
 
               {/* Avatar Info */}
               <div className="p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xl font-semibold text-gray-900">{avatar.name}</h3>
                   {avatar.isPremium && (
                     <Crown className="h-5 w-5 text-yellow-500" />
                   )}
                 </div>
-                <p className="text-gray-600 text-sm mb-3">{avatar.description}</p>
-                <p className="text-gray-500 text-xs mb-4">{avatar.personality}</p>
+                
+                {/* Edad */}
+                {avatar.age && (
+                  <p className="text-gray-600 text-sm mb-2">
+                    <span className="font-medium">Edad:</span> {avatar.age} años
+                  </p>
+                )}
+                
+                {/* Personalidad */}
+                <p className="text-gray-600 text-sm mb-4 line-clamp-3">{avatar.personality}</p>
                 
                 {/* Action Buttons */}
                 <div className="flex space-x-2">

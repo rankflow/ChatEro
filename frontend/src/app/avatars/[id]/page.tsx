@@ -130,7 +130,7 @@ export default function AvatarProfilePage() {
                 <img
                   src={profile.imageUrl}
                   alt={profile.name}
-                  className="w-full h-96 object-cover"
+                  className="w-full h-[500px] object-cover"
                 />
                 {profile.isPremium && (
                   <div className="absolute top-4 right-4 bg-yellow-500 text-white px-3 py-1 rounded-full flex items-center space-x-1">

@@ -24,6 +24,7 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
         isPremium: syncedData.isPremium,
         category: syncedData.category,
         isActive: syncedData.isActive,
+        age: syncedData.age,
         createdAt: syncedData.createdAt,
         updatedAt: syncedData.updatedAt
       }));
@@ -77,6 +78,7 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
             isPremium: newSyncedData.isPremium,
             category: newSyncedData.category,
             isActive: newSyncedData.isActive,
+            age: newSyncedData.age,
             createdAt: newSyncedData.createdAt,
             updatedAt: newSyncedData.updatedAt
           }
@@ -94,6 +96,7 @@ export default async function avatarRoutes(fastify: FastifyInstance) {
           isPremium: syncedData.isPremium,
           category: syncedData.category,
           isActive: syncedData.isActive,
+          age: syncedData.age,
           createdAt: syncedData.createdAt,
           updatedAt: syncedData.updatedAt
         }

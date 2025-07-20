@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { AIService } from '../services/aiService.js';
 import { Avatar } from '../types/index.js';
 
+
 const prisma = new PrismaClient();
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -313,4 +314,6 @@ Responde SOLO con un JSON válido que contenga todos estos campos completados. N
       reply.status(500).send({ error: 'Error al autocompletar el personaje' });
     }
   });
+
+
 } 
