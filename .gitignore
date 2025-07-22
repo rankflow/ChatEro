@@ -112,3 +112,48 @@ prisma/dev.db-journal
 
 # TypeScript
 *.tsbuildinfo
+
+# ===== EXCLUSIONES ADICIONALES PARA PRODUCCIÓN =====
+
+# Testing and Debug Scripts (NO NECESARIOS EN PRODUCCIÓN)
+tests/
+test-*.js
+verificar-*.js
+check-*.js
+comparar-*.js
+consultar-*.js
+
+# Development Scripts (POTENCIALMENTE SENSIBLES)
+scripts/deploy-*.sh
+scripts/setup-*.sh
+
+# Documentation Analysis (TEMPORALES)
+ANALISIS_*.md
+RESUMEN_LIMPIEZA_*.md
+
+# Development Package Files
+package-lock.dev.json
+package.dev.json
+
+# Railway Development Files
+railway.json
+railway.toml
+
+# Docker Development Files
+docker-compose.prod.yml
+nginx.conf
+
+# Development Environment
+dev.sh
+
+# ===== ARCHIVOS DE CONFIGURACIÓN SENSIBLES =====
+
+# Stripe Keys (SI CONTIENEN CLAVES REALES)
+# STRIPE_*.md (solo si contienen claves reales)
+
+# Venice AI Keys (SI CONTIENEN CLAVES REALES)
+# VENICE_*.md (solo si contienen claves reales)
+
+# ===== ARCHIVOS DE DEBUG =====
+DEBUG_*.md
+SOLUCION_*.md
