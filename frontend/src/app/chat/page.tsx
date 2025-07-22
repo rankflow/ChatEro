@@ -338,7 +338,32 @@ function ChatPageContent() {
       </div>
 
       {/* Chat Messages */}
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-4 relative">
+        {/* Avatar Image - Absolute positioned to the left */}
+        {selectedAvatar && (
+          <div className="absolute left-0 top-0 w-80 -ml-80">
+            <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 flex flex-col">
+              <div className="w-72 h-96 rounded-lg overflow-hidden mt-4">
+                <img
+                  src={selectedAvatar.imageUrl}
+                  alt={selectedAvatar.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback si la imagen no carga
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+                <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-600 flex items-center justify-center text-white text-4xl font-bold hidden">
+                  {selectedAvatar.name[0]}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chat Container - Centered as original */}
         <div className="bg-white/5 backdrop-blur-lg rounded-2xl flex flex-col h-[80vh]">
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ minHeight: 0 }}>
