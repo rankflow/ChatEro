@@ -31,6 +31,7 @@ export interface ChatMessage {
   message: string;
   avatarId?: string;
   context?: string;
+  incognitoMode?: boolean;
   conversationMemory?: ConversationMemory;
   conversationHistory?: Array<{
     role: 'user' | 'assistant' | 'system';

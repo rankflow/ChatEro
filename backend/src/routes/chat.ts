@@ -10,6 +10,7 @@ const chatMessageSchema = z.object({
   message: z.string().min(1).max(1000),
   avatarId: z.string().optional(),
   context: z.string().optional(),
+  incognitoMode: z.boolean().optional(),
   conversationMemory: z.object({
     summary: z.string().optional(),
     turnCount: z.number().optional(),
@@ -37,6 +38,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           message: { type: 'string', minLength: 1, maxLength: 1000 },
           avatarId: { type: 'string' },
           context: { type: 'string' },
+          incognitoMode: { type: 'boolean' },
           conversationMemory: {
             type: 'object',
             properties: {
@@ -66,8 +68,10 @@ export default async function chatRoutes(fastify: FastifyInstance) {
     preHandler: [fastify.authenticate]
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { message, avatarId, context, conversationMemory, conversationHistory } = chatMessageSchema.parse(request.body);
+      const { message, avatarId, context, conversationMemory, conversationHistory, incognitoMode = false } = chatMessageSchema.parse(request.body);
       const userId = (request.user as any)?.userId;
+      
+      console.log(`[DEBUG] Modo incógnito: ${incognitoMode}`);
       
       // Validación de contenido desactivada temporalmente
 
@@ -187,30 +191,38 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       // Generar respuesta con Venice AI
       const aiResponse = await AIService.generateChatResponse(message, chatContext);
       
-      // Guardar mensaje del usuario en base de datos
-      const userMessage = await DatabaseService.saveMessage(
-        userId,
-        message,
-        true,
-        avatarId,
-        0 // Los mensajes del usuario no consumen tokens
-      );
+      // Guardar mensajes solo si NO está en modo incógnito
+      let userMessage = null;
+      let aiMessage = null;
+      
+      if (!incognitoMode) {
+        // Guardar mensaje del usuario en base de datos
+        userMessage = await DatabaseService.saveMessage(
+          userId,
+          message,
+          true,
+          avatarId,
+          0 // Los mensajes del usuario no consumen tokens
+        );
 
-      // Guardar respuesta de la IA en base de datos
-      const aiMessage = await DatabaseService.saveMessage(
-        userId,
-        aiResponse.message,
-        false,
-        avatarId,
-        aiResponse.tokensUsed
-      );
+        // Guardar respuesta de la IA en base de datos
+        aiMessage = await DatabaseService.saveMessage(
+          userId,
+          aiResponse.message,
+          false,
+          avatarId,
+          aiResponse.tokensUsed
+        );
 
-      // Consumir tokens si la respuesta fue exitosa
-      if (aiMessage && aiResponse.tokensUsed > 0) {
-        const tokensConsumed = await DatabaseService.consumeTokens(userId, aiResponse.tokensUsed);
-        if (!tokensConsumed) {
-          console.warn(`[WARNING] No se pudieron consumir ${aiResponse.tokensUsed} tokens para usuario ${userId}`);
+        // Consumir tokens si la respuesta fue exitosa
+        if (aiMessage && aiResponse.tokensUsed > 0) {
+          const tokensConsumed = await DatabaseService.consumeTokens(userId, aiResponse.tokensUsed);
+          if (!tokensConsumed) {
+            console.warn(`[WARNING] No se pudieron consumir ${aiResponse.tokensUsed} tokens para usuario ${userId}`);
+          }
         }
+      } else {
+        console.log(`[DEBUG] Modo incógnito activado - No se guardan mensajes en BD`);
       }
       
       return reply.send({

@@ -24,6 +24,7 @@ function ChatPageContent() {
   const [userTokens, setUserTokens] = useState(0);
   const [conversationMemory, setConversationMemory] = useState<ConversationMemory | undefined>(undefined);
   const [avatarChanged, setAvatarChanged] = useState(false);
+  const [isIncognitoMode, setIsIncognitoMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -128,6 +129,7 @@ function ChatPageContent() {
         avatarId: selectedAvatar?.id,
         conversationMemory: conversationMemory || {},
         conversationHistory: conversationHistory,
+        incognitoMode: isIncognitoMode,
       };
 
       const response: ChatResponse = await apiService.sendMessage(chatMessage);
@@ -297,6 +299,24 @@ function ChatPageContent() {
           </div>
           {/* Controles de tokens y limpiar chat */}
           <div className="flex items-center space-x-4 ml-4">
+            <button
+              onClick={() => setIsIncognitoMode(!isIncognitoMode)}
+              className={`flex items-center space-x-2 px-3 py-1 rounded-lg text-sm transition-all duration-300 ${
+                isIncognitoMode 
+                  ? 'bg-green-500/30 text-green-200 border border-green-400/50' 
+                  : 'bg-white/10 hover:bg-white/20 text-white/80'
+              }`}
+              title={isIncognitoMode ? "Desactivar modo incógnito" : "Activar modo incógnito"}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isIncognitoMode ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                )}
+              </svg>
+              <span>Incógnito</span>
+            </button>
             <div className="bg-white/10 rounded-lg px-3 py-1">
               <span className="text-white text-sm">Tokens: {userTokens}</span>
             </div>
@@ -335,6 +355,14 @@ function ChatPageContent() {
                     <div className="inline-flex items-center space-x-2 bg-blue-500/20 text-blue-200 px-4 py-2 rounded-lg text-sm">
                       <span>🔄</span>
                       <span>Cambiado a {selectedAvatar?.name} - Contexto limpiado</span>
+                    </div>
+                  </div>
+                )}
+                {isIncognitoMode && (
+                  <div className="text-center py-2">
+                    <div className="inline-flex items-center space-x-2 bg-green-500/20 text-green-200 px-4 py-2 rounded-lg text-sm border border-green-400/50">
+                      <span>🔒</span>
+                      <span>Modo incógnito activado - Los mensajes no se guardarán</span>
                     </div>
                   </div>
                 )}
