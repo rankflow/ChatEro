@@ -23,6 +23,10 @@ model User {
   payments  Payment[]
   messages  Message[]
   sessions  Session[]
+  userMemories UserMemory[]
+  conversationEmbeddings ConversationEmbedding[]
+  memoryClusters MemoryCluster[]
+  sessionSummaries SessionSummary[]
 
   @@map("users")
 }
@@ -105,6 +109,9 @@ model Avatar {
 
   // Relaciones
   messages Message[]
+  userMemories UserMemory[]
+  conversationEmbeddings ConversationEmbedding[]
+  sessionSummaries SessionSummary[]
 
   @@map("avatars")
 }
@@ -136,4 +143,84 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
+}
+
+// ===== TABLAS DE MEMORIA VECTORIAL =====
+
+model UserMemory {
+  id            Int      @id @default(autoincrement())
+  userId        String
+  avatarId      String
+  memoryType    String
+  memoryKey     String?
+  memoryContent String
+  memoryVector  String   // JSON string del vector (1024 dimensiones)
+  confidence    Float    @default(0.5)
+  lastUpdated   DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  // Relaciones
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar Avatar @relation(fields: [avatarId], references: [id])
+
+  @@index([userId, avatarId])
+  @@index([memoryType])
+  @@map("user_memory")
+}
+
+model ConversationEmbedding {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  avatarId    String
+  sessionId   String?
+  messageId   String?
+  content     String
+  embedding   String   // JSON string del vector (1024 dimensiones)
+  messageType String
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  // Relaciones
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar Avatar @relation(fields: [avatarId], references: [id])
+
+  @@index([userId, sessionId])
+  @@index([timestamp])
+  @@map("conversation_embeddings")
+}
+
+model MemoryCluster {
+  id             Int      @id @default(autoincrement())
+  userId         String
+  clusterType    String
+  clusterName    String
+  centroidVector String   // JSON string del vector centro (1024 dimensiones)
+  memberCount    Int      @default(0)
+  lastUpdated    DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, clusterType])
+  @@map("memory_clusters")
+}
+
+model SessionSummary {
+  id            Int      @id @default(autoincrement())
+  userId        String
+  avatarId      String
+  sessionId     String
+  summary       String
+  summaryVector String   // JSON string del vector (1024 dimensiones)
+  keyTopics     String   // JSON string de array de temas
+  emotionalTone String?
+  createdAt     DateTime @default(now())
+
+  // Relaciones
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar Avatar @relation(fields: [avatarId], references: [id])
+
+  @@index([userId, sessionId])
+  @@map("session_summaries")
 } 

@@ -19,6 +19,7 @@ import chatRoutes from './routes/chat.js';
 import avatarRoutes from './routes/avatars.js';
 import paymentRoutes from './routes/payments.js';
 import adminRoutes from './routes/admin.js';
+import memoryRoutes from './routes/memory.js';
 
 const fastify = Fastify({
   logger: false
@@ -55,6 +56,7 @@ await fastify.register(chatRoutes, { prefix: '/api/chat' });
 await fastify.register(avatarRoutes, { prefix: '/api/avatars' });
 await fastify.register(paymentRoutes, { prefix: '/api/payments' });
 await fastify.register(adminRoutes);
+await fastify.register(memoryRoutes, { prefix: '/api' });
 
 // Ruta de salud
 fastify.get('/health', async (request, reply) => {

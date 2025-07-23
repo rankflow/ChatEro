@@ -15,6 +15,17 @@ VENICE_API_KEY=2lVrq2Li0x6EPvpEavss544mEd7xF3OY1kVVTzDzmS
 VENICE_API_URL=https://api.venice.ai/api/v1/chat/completions
 VENICE_MODEL=venice-uncensored
 
+# Voyage AI Configuration
+VOYAGE_API_KEY=pa-vTVWi2DvOM4zUDhnGyqDoYCu4KU9k7nT9lA3r26fOYr
+VOYAGE_MODEL=voyage-3-large
+VOYAGE_DIMENSIONS=1024
+
+# Memory System Configuration
+MEMORY_SIMILARITY_THRESHOLD=0.85
+MEMORY_CACHE_TTL=3600
+MEMORY_BATCH_SIZE=10
+MEMORY_DAILY_CONSOLIDATION=true
+
 # Stripe Configuration
 STRIPE_SECRET_KEY=sk_test_tu-stripe-secret-key-aqui
 STRIPE_PUBLISHABLE_KEY=pk_test_tu-stripe-publishable-key-aqui
