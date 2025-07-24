@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,22 +8,20 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relaciones
-  tokens    Token[]
-  payments  Payment[]
-  messages  Message[]
-  sessions  Session[]
-  userMemories UserMemory[]
+  id                     String                  @id @default(cuid())
+  email                  String                  @unique
+  username               String                  @unique
+  password               String
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
   conversationEmbeddings ConversationEmbedding[]
-  memoryClusters MemoryCluster[]
-  sessionSummaries SessionSummary[]
+  memoryClusters         MemoryCluster[]
+  messages               Message[]
+  payments               Payment[]
+  sessionSummaries       SessionSummary[]
+  sessions               Session[]
+  tokens                 Token[]
+  userMemories           UserMemory[]
 
   @@map("users")
 }
@@ -37,9 +32,7 @@ model Token {
   amount    Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relaciones
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tokens")
 }
@@ -52,82 +45,69 @@ model Payment {
   status      String   @default("pending")
   stripeId    String?  @unique
   description String?
-  metadata    String?  // JSON string
+  metadata    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  // Relaciones
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
 
 model Avatar {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  personality String
-  imageUrl    String
-  isPremium   Boolean  @default(false)
-  category    String
-  isActive    Boolean  @default(true)
-  
-  // Desarrollo creativo del personaje
-  background  String?  // Trasfondo general del personaje
-  origin      String?  // Orígenes y lugar de nacimiento
-  age         Int?     // Edad del personaje
-  occupation  String?  // Profesión o ocupación
-  interests   String?  // Intereses y hobbies
-  fears       String?  // Miedos y vulnerabilidades
-  dreams      String?  // Sueños y aspiraciones
-  secrets     String?  // Secretos del personaje
-  relationships String? // Relaciones importantes
-  lifeExperiences String? // Experiencias de vida significativas
-  personalityTraits String? // Rasgos de personalidad detallados
-  communicationStyle String? // Estilo de comunicación
-  emotionalState String? // Estado emocional típico
-  motivations  String?  // Motivaciones y deseos
-  conflicts    String?  // Conflictos internos y externos
-  growth       String?  // Arco de desarrollo del personaje
-  
-  // Metadatos del personaje
-  voiceType   String?  // Tipo de voz (suave, ronca, etc.)
-  accent      String?  // Acento o forma de hablar
-  mannerisms  String?  // Gestos y manerismos característicos
-  style       String?  // Estilo de vestir y apariencia
-  scent       String?  // Perfume o aroma característico
-  
-  // Configuración del chat
-  chatStyle   String?  // Estilo de conversación específico
-  topics      String?  // Temas favoritos de conversación
-  boundaries  String?  // Límites y temas a evitar
-  kinks       String?  // Preferencias sexuales (si aplica)
-  roleplay    String?  // Estilo de roleplay preferido
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relaciones
-  messages Message[]
-  userMemories UserMemory[]
+  id                     String                  @id @default(cuid())
+  name                   String
+  description            String
+  personality            String
+  imageUrl               String
+  isPremium              Boolean                 @default(false)
+  category               String
+  isActive               Boolean                 @default(true)
+  background             String?
+  origin                 String?
+  age                    Int?
+  occupation             String?
+  interests              String?
+  fears                  String?
+  dreams                 String?
+  secrets                String?
+  relationships          String?
+  lifeExperiences        String?
+  personalityTraits      String?
+  communicationStyle     String?
+  emotionalState         String?
+  motivations            String?
+  conflicts              String?
+  growth                 String?
+  voiceType              String?
+  accent                 String?
+  mannerisms             String?
+  style                  String?
+  scent                  String?
+  chatStyle              String?
+  topics                 String?
+  boundaries             String?
+  kinks                  String?
+  roleplay               String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
   conversationEmbeddings ConversationEmbedding[]
-  sessionSummaries SessionSummary[]
+  messages               Message[]
+  sessionSummaries       SessionSummary[]
+  userMemories           UserMemory[]
 
   @@map("avatars")
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  userId    String
-  avatarId  String?
-  content   String
-  isUser    Boolean  @default(true)
-  tokensUsed Int     @default(0)
-  createdAt DateTime @default(now())
-
-  // Relaciones
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  avatar Avatar? @relation(fields: [avatarId], references: [id])
+  id         String   @id @default(cuid())
+  userId     String
+  avatarId   String?
+  content    String
+  isUser     Boolean  @default(true)
+  tokensUsed Int      @default(0)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar     Avatar?  @relation(fields: [avatarId], references: [id])
 
   @@map("messages")
 }
@@ -138,33 +118,47 @@ model Session {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  // Relaciones
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
 
-// ===== TABLAS DE MEMORIA VECTORIAL =====
+model MemoryCategory {
+  id          Int              @id @default(autoincrement())
+  name        String
+  description String?
+  parentId    Int?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  parent      MemoryCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    MemoryCategory[] @relation("CategoryHierarchy")
+  memories    UserMemory[]
+
+  @@map("memory_categories")
+}
 
 model UserMemory {
-  id            Int      @id @default(autoincrement())
+  id            Int            @id @default(autoincrement())
   userId        String
   avatarId      String
-  memoryType    String
-  memoryKey     String?
+  categoryId    Int
   memoryContent String
-  memoryVector  String   // JSON string del vector (1024 dimensiones)
-  confidence    Float    @default(0.5)
-  lastUpdated   DateTime @default(now())
-  createdAt     DateTime @default(now())
+  memoryVector  String
+  memoryOwner   String         @default("user")
+  source        String         @default("batch_analysis")
+  sessionId     String?
+  turnCount     Int?
+  confidence    Float          @default(0.5)
+  tags          String?
+  isActive      Boolean        @default(true)
+  lastUpdated   DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  category      MemoryCategory @relation(fields: [categoryId], references: [id])
+  avatar        Avatar         @relation(fields: [avatarId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relaciones
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  avatar Avatar @relation(fields: [avatarId], references: [id])
-
-  @@index([userId, avatarId])
-  @@index([memoryType])
+  @@index([userId, avatarId, memoryOwner, confidence])
+  @@index([categoryId, isActive])
   @@map("user_memory")
 }
 
@@ -175,14 +169,12 @@ model ConversationEmbedding {
   sessionId   String?
   messageId   String?
   content     String
-  embedding   String   // JSON string del vector (1024 dimensiones)
+  embedding   String
   messageType String
   timestamp   DateTime @default(now())
   createdAt   DateTime @default(now())
-
-  // Relaciones
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  avatar Avatar @relation(fields: [avatarId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar      Avatar   @relation(fields: [avatarId], references: [id])
 
   @@index([userId, sessionId])
   @@index([timestamp])
@@ -194,13 +186,11 @@ model MemoryCluster {
   userId         String
   clusterType    String
   clusterName    String
-  centroidVector String   // JSON string del vector centro (1024 dimensiones)
+  centroidVector String
   memberCount    Int      @default(0)
   lastUpdated    DateTime @default(now())
   createdAt      DateTime @default(now())
-
-  // Relaciones
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, clusterType])
   @@map("memory_clusters")
@@ -212,15 +202,13 @@ model SessionSummary {
   avatarId      String
   sessionId     String
   summary       String
-  summaryVector String   // JSON string del vector (1024 dimensiones)
-  keyTopics     String   // JSON string de array de temas
+  summaryVector String
+  keyTopics     String
   emotionalTone String?
   createdAt     DateTime @default(now())
-
-  // Relaciones
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  avatar Avatar @relation(fields: [avatarId], references: [id])
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar        Avatar   @relation(fields: [avatarId], references: [id])
 
   @@index([userId, sessionId])
   @@map("session_summaries")
-} 
+}

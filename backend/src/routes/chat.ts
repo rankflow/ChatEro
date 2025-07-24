@@ -4,6 +4,10 @@ import { AIService, ChatContext, ConversationMemory } from '../services/aiServic
 import { AvatarExtendedMemoryService } from '../services/avatarExtendedMemory.js';
 import { AvatarSyncService } from '../services/avatarSyncService.js';
 import { DatabaseService } from '../services/database.js';
+import MemoryService from '../services/memoryService.js';
+import ConversationAnalysisService from '../services/conversationAnalysisService.js';
+import { BatchMemoryAnalysisService } from '../services/batchMemoryAnalysisService.js';
+import { ConversationEndDetectionService } from '../services/conversationEndDetectionService.js';
 
 // Esquemas de validación
 const chatMessageSchema = z.object({
@@ -166,6 +170,38 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       }
       // --- FIN INTEGRACIÓN ---
 
+      // --- INTEGRACIÓN MEMORIA VECTORIAL ---
+      let memoryContext = '';
+      if (avatarId && message && !incognitoMode) {
+        try {
+          console.log(`[MEMORY] Buscando memorias relevantes para usuario ${userId}, avatar ${avatarId}`);
+          
+          // Buscar memorias relevantes del usuario con este avatar
+          const relevantMemories = await MemoryService.searchMemories(userId, avatarId, message, 3);
+          
+          if (relevantMemories.length > 0) {
+            console.log(`[MEMORY] ✅ Encontradas ${relevantMemories.length} memorias relevantes`);
+            
+            // Crear contexto de memoria para la IA
+            const memoryTexts = relevantMemories.map(memory => 
+              `[Memoria ${memory.memoryType}]: ${memory.memoryContent} (confianza: ${memory.confidence.toFixed(2)})`
+            );
+            
+            memoryContext = `\n\n--- MEMORIAS RELEVANTES DEL USUARIO ---\n${memoryTexts.join('\n')}\n--- FIN MEMORIAS ---\n`;
+            
+            console.log(`[MEMORY] Contexto de memoria añadido: ${memoryContext.length} caracteres`);
+          } else {
+            console.log(`[MEMORY] ❌ No se encontraron memorias relevantes`);
+          }
+        } catch (error) {
+          console.error(`[MEMORY] Error buscando memorias:`, error);
+          // Continuar sin memoria en caso de error
+        }
+      } else {
+        console.log(`[MEMORY] No se busca memoria - incognitoMode: ${incognitoMode}, avatarId: ${avatarId}`);
+      }
+      // --- FIN INTEGRACIÓN MEMORIA VECTORIAL ---
+
       // Preparar contexto para Venice AI con memoria
       console.log(`[DEBUG] Avatar antes del contexto:`, avatar ? `ID: ${avatar.id}, Name: ${avatar.name}` : 'undefined');
       
@@ -183,6 +219,14 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         chatContext.conversationHistory = [
           ...(chatContext.conversationHistory || []),
           { role: 'system', content: extraFicha }
+        ];
+      }
+
+      // Añadir contexto de memoria al historial si se encontró
+      if (memoryContext) {
+        chatContext.conversationHistory = [
+          ...(chatContext.conversationHistory || []),
+          { role: 'system', content: memoryContext }
         ];
       }
 
@@ -205,6 +249,23 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           0 // Los mensajes del usuario no consumen tokens
         );
 
+        // Guardar embedding del mensaje del usuario
+        if (userMessage && avatarId) {
+          try {
+            await MemoryService.saveConversationEmbedding(
+              userId,
+              avatarId,
+              message,
+              'user',
+              undefined, // sessionId se puede añadir después
+              userMessage.id
+            );
+            console.log(`[MEMORY] ✅ Embedding del mensaje del usuario guardado`);
+          } catch (error) {
+            console.error(`[MEMORY] Error guardando embedding del usuario:`, error);
+          }
+        }
+
         // Guardar respuesta de la IA en base de datos
         aiMessage = await DatabaseService.saveMessage(
           userId,
@@ -214,11 +275,81 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           aiResponse.tokensUsed
         );
 
+        // Guardar embedding de la respuesta de la IA
+        if (aiMessage && avatarId) {
+          try {
+            await MemoryService.saveConversationEmbedding(
+              userId,
+              avatarId,
+              aiResponse.message,
+              'avatar',
+              undefined, // sessionId se puede añadir después
+              aiMessage.id
+            );
+            console.log(`[MEMORY] ✅ Embedding de la respuesta de la IA guardado`);
+          } catch (error) {
+            console.error(`[MEMORY] Error guardando embedding de la IA:`, error);
+          }
+        }
+
+        // Analizar conversación para extraer información relevante
+        if (avatarId) {
+          try {
+            console.log(`[ANALYSIS] Iniciando análisis de conversación...`);
+            
+            const analysisResult = await ConversationAnalysisService.analyzeConversation(
+              userId,
+              avatarId,
+              message,
+              aiResponse.message,
+              context // Usar la variable context que ya está disponible
+            );
+            
+            if (analysisResult.newMemories > 0) {
+              console.log(`[ANALYSIS] ✅ Análisis completado - ${analysisResult.newMemories} nuevas memorias creadas en ${analysisResult.analysisTime}ms`);
+            } else {
+              console.log(`[ANALYSIS] ✅ Análisis completado - No se encontró información relevante en ${analysisResult.analysisTime}ms`);
+            }
+          } catch (error) {
+            console.error(`[ANALYSIS] Error analizando conversación:`, error);
+          }
+        }
+
         // Consumir tokens si la respuesta fue exitosa
         if (aiMessage && aiResponse.tokensUsed > 0) {
           const tokensConsumed = await DatabaseService.consumeTokens(userId, aiResponse.tokensUsed);
           if (!tokensConsumed) {
             console.warn(`[WARNING] No se pudieron consumir ${aiResponse.tokensUsed} tokens para usuario ${userId}`);
+          }
+        }
+
+        // --- DETECCIÓN DE FIN DE CONVERSACIÓN Y ANÁLISIS BATCH ---
+        if (avatarId) {
+          try {
+            console.log(`[BATCH] Verificando si la conversación ha terminado...`);
+            
+            // Verificar si la conversación ha terminado
+            const conversationEnded = await ConversationEndDetectionService.detectConversationEnd(userId, avatarId);
+            
+            if (conversationEnded) {
+              console.log(`[BATCH] ✅ Conversación terminada - Iniciando análisis batch...`);
+              
+              // Ejecutar análisis batch de forma asíncrona (no bloquear la respuesta)
+              setImmediate(async () => {
+                try {
+                  await BatchMemoryAnalysisService.analyzeConversation(userId, avatarId);
+                  console.log(`[BATCH] ✅ Análisis batch completado para usuario ${userId} y avatar ${avatarId}`);
+                } catch (error) {
+                  console.error(`[BATCH] ❌ Error en análisis batch:`, error);
+                }
+              });
+              
+              console.log(`[BATCH] Análisis batch programado para ejecución asíncrona`);
+            } else {
+              console.log(`[BATCH] Conversación aún activa - No se ejecuta análisis batch`);
+            }
+          } catch (error) {
+            console.error(`[BATCH] Error verificando fin de conversación:`, error);
           }
         }
       } else {
@@ -352,6 +483,82 @@ export default async function chatRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({
         success: false,
         message: 'Error al limpiar el historial',
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // Ejecutar análisis batch manualmente
+  fastify.post('/batch-analyze', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['avatarId'],
+        properties: {
+          avatarId: { type: 'string' }
+        }
+      }
+    },
+    preHandler: [fastify.authenticate]
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { avatarId } = request.body as any;
+      const userId = (request.user as any)?.userId;
+      
+      console.log(`[BATCH] Análisis batch manual solicitado para usuario ${userId} y avatar ${avatarId}`);
+      
+      // Ejecutar análisis batch
+      await BatchMemoryAnalysisService.analyzeConversation(userId, avatarId);
+      
+      return reply.send({
+        success: true,
+        message: 'Análisis batch completado exitosamente',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(400).send({
+        success: false,
+        message: 'Error ejecutando análisis batch',
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // Obtener estado de conversación
+  fastify.get('/conversation-status', {
+    schema: {
+      querystring: {
+        type: 'object',
+        required: ['avatarId'],
+        properties: {
+          avatarId: { type: 'string' }
+        }
+      }
+    },
+    preHandler: [fastify.authenticate]
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { avatarId } = request.query as any;
+      const userId = (request.user as any)?.userId;
+      
+      // Verificar si la conversación ha terminado
+      const conversationEnded = await ConversationEndDetectionService.detectConversationEnd(userId, avatarId);
+      const timeSinceLastMessage = await ConversationEndDetectionService.getTimeSinceLastMessage(userId, avatarId);
+      const conversationDuration = await ConversationEndDetectionService.getConversationDuration(userId, avatarId);
+      
+      return reply.send({
+        success: true,
+        conversationEnded,
+        timeSinceLastMessage, // en minutos
+        conversationDuration, // en minutos
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(400).send({
+        success: false,
+        message: 'Error obteniendo estado de conversación',
         error: error instanceof Error ? error.message : 'Error desconocido'
       });
     }

@@ -246,6 +246,41 @@ class ApiService {
 
     return response.json();
   }
+
+  // Análisis Batch
+  async batchAnalyze(avatarId: string): Promise<{ success: boolean; message: string; timestamp: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/chat/batch-analyze`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ avatarId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error ejecutando análisis batch: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async getConversationStatus(avatarId: string): Promise<{
+    success: boolean;
+    conversationEnded: boolean;
+    timeSinceLastMessage: number;
+    conversationDuration: number;
+    timestamp: string;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/api/chat/conversation-status?avatarId=${avatarId}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error obteniendo estado de conversación: ${response.status}`);
+    }
+
+    return response.json();
+  }
 }
 
 export const apiService = new ApiService(); 

@@ -108,10 +108,11 @@ class MemoryService {
     memoryType: string,
     memoryContent: string,
     memoryKey?: string,
-    confidence: number = 0.5
+    confidence: number = 0.5,
+    memoryOwner: 'user' | 'avatar' = 'user'
   ): Promise<void> {
     try {
-      console.log(`[MemoryService] Guardando memoria tipo: ${memoryType}`);
+      console.log(`[MemoryService] Guardando memoria tipo: ${memoryType} (${memoryOwner})`);
       
       // Generar embedding del contenido de la memoria
       const memoryEmbedding = await VoyageEmbeddingService.generateEmbedding(memoryContent);
@@ -125,12 +126,13 @@ class MemoryService {
           memoryKey,
           memoryContent,
           memoryVector: JSON.stringify(memoryEmbedding),
+          memoryOwner,
           confidence,
           lastUpdated: new Date()
         }
       });
 
-      console.log('[MemoryService] Memoria guardada exitosamente');
+      console.log(`[MemoryService] Memoria guardada exitosamente (${memoryOwner})`);
 
     } catch (error) {
       console.error('[MemoryService] Error guardando memoria:', error);
