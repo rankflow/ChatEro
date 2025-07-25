@@ -1,6 +1,8 @@
 import { PrismaClient, Message } from '@prisma/client';
 import VoyageEmbeddingService from './voyageEmbeddingService.js';
 import MemoryService from './memoryService.js';
+import VeniceAIService from './veniceAIService.js';
+import { MetricsService } from './metricsService.js';
 
 const prisma = new PrismaClient();
 
@@ -65,6 +67,11 @@ interface PerformanceMetrics {
   timestamp: Date;
 }
 
+// Añadir tipo extendido para memorias con embedding
+interface MemoryWithEmbedding extends Omit<{ category: string; content: string; tags?: string[] }, 'embedding'> {
+  embedding: number[];
+}
+
 export class BatchMemoryAnalysisService {
   private static readonly DEFAULT_CONFIG: BatchAnalysisConfig = {
     maxTurnsPerBatch: 80,
@@ -93,6 +100,8 @@ export class BatchMemoryAnalysisService {
    */
   static async analyzeConversation(userId: string, avatarId: string): Promise<void> {
     const startTime = Date.now();
+    const analysisId = `analysis_${userId}_${avatarId}_${Date.now()}`;
+    
     const metrics: PerformanceMetrics = {
       totalAnalysisTime: 0,
       totalBatches: 0,
@@ -105,24 +114,36 @@ export class BatchMemoryAnalysisService {
     };
 
     try {
-      console.log(`[BatchMemoryAnalysisService] Iniciando análisis optimizado de conversación para usuario ${userId} y avatar ${avatarId}`);
+      console.log(`[${analysisId}] 🚀 INICIANDO ANÁLISIS BATCH`);
+      console.log(`[${analysisId}] 👤 Usuario: ${userId}`);
+      console.log(`[${analysisId}] 🤖 Avatar: ${avatarId}`);
+      console.log(`[${analysisId}] ⏰ Timestamp: ${new Date().toISOString()}`);
 
       // 1. Obtener todos los mensajes de la conversación
+      console.log(`[${analysisId}] 📥 Recuperando mensajes de la base de datos...`);
       const messages = await this.getConversationMessages(userId, avatarId);
       
       if (messages.length === 0) {
-        console.log('[BatchMemoryAnalysisService] No hay mensajes para analizar');
+        console.log(`[${analysisId}] ⚠️ No hay mensajes para analizar - Finalizando`);
         return;
       }
 
-      console.log(`[BatchMemoryAnalysisService] Encontrados ${messages.length} mensajes para analizar`);
+      console.log(`[${analysisId}] ✅ Encontrados ${messages.length} mensajes (${messages.length * 2} turnos totales)`);
+      console.log(`[${analysisId}] 📊 Rango temporal: ${messages[0]?.createdAt?.toISOString()} → ${messages[messages.length - 1]?.createdAt?.toISOString()}`);
 
       // 2. Fraccionar en batches
+      console.log(`[${analysisId}] 🔄 Fraccionando conversación en batches...`);
       const batches = this.createBatches(messages);
       metrics.totalBatches = batches.length;
-      console.log(`[BatchMemoryAnalysisService] Conversación fraccionada en ${batches.length} batches`);
+      console.log(`[${analysisId}] ✅ Conversación fraccionada en ${batches.length} batches`);
+      
+      // Log detallado de batches
+      batches.forEach((batch, index) => {
+        console.log(`[${analysisId}] 📦 Batch ${index + 1}: ${batch.length} mensajes (~${Math.round(batch.reduce((sum, msg) => sum + msg.content.length, 0) / 4)} tokens)`);
+      });
 
       // 3. Procesar cola de batches con gestión de errores robusta
+      console.log(`[${analysisId}] 🔄 Iniciando procesamiento de ${batches.length} batches...`);
       const results = await this.processBatchQueue(userId, avatarId, batches);
       
       // 4. Calcular métricas
@@ -132,13 +153,20 @@ export class BatchMemoryAnalysisService {
       metrics.averageBatchTime = results.reduce((sum, r) => sum + r.processingTime, 0) / results.length;
       metrics.errors = results.filter(r => !r.success).map(r => r.error || 'Error desconocido');
 
+      console.log(`[${analysisId}] 📊 MÉTRICAS INTERMEDIAS:`);
+      console.log(`[${analysisId}]   ✅ Batches exitosos: ${metrics.successfulBatches}/${metrics.totalBatches}`);
+      console.log(`[${analysisId}]   🧠 Memorias extraídas: ${metrics.totalMemoriesExtracted}`);
+      console.log(`[${analysisId}]   📡 Llamadas API: ${metrics.totalApiCalls}`);
+      console.log(`[${analysisId}]   ⏱️ Tiempo promedio por batch: ${Math.round(metrics.averageBatchTime)}ms`);
+
       // 5. Verificar completitud
+      console.log(`[${analysisId}] 🔍 Verificando completitud del análisis...`);
       const allProcessed = await this.verifyAllBatchesProcessed(userId, avatarId);
       
       if (allProcessed) {
-        console.log('[BatchMemoryAnalysisService] Análisis batch completado exitosamente');
+        console.log(`[${analysisId}] ✅ Análisis batch completado exitosamente`);
       } else {
-        console.error('[BatchMemoryAnalysisService] Error: No todos los batches fueron procesados');
+        console.error(`[${analysisId}] ❌ Error: No todos los batches fueron procesados`);
         metrics.errors.push('No todos los batches fueron procesados');
       }
 
@@ -146,11 +174,27 @@ export class BatchMemoryAnalysisService {
       metrics.totalAnalysisTime = Date.now() - startTime;
       this.recordMetrics(metrics);
 
-      // 7. Log de resumen
+      // 7. Registrar en MetricsService
+      MetricsService.recordConversationAnalysis(
+        userId,
+        avatarId,
+        messages.length,
+        metrics.totalMemoriesExtracted,
+        metrics.totalAnalysisTime,
+        metrics.successfulBatches === metrics.totalBatches,
+        metrics.errors
+      );
+
+      // 8. Log de resumen
       this.logAnalysisSummary(metrics);
 
+      console.log(`[${analysisId}] 🎉 ANÁLISIS BATCH FINALIZADO`);
+      console.log(`[${analysisId}] ⏱️ Tiempo total: ${metrics.totalAnalysisTime}ms`);
+      console.log(`[${analysisId}] 🧠 Memorias totales: ${metrics.totalMemoriesExtracted}`);
+      console.log(`[${analysisId}] 📡 APIs totales: ${metrics.totalApiCalls}`);
+
     } catch (error) {
-      console.error('[BatchMemoryAnalysisService] Error crítico en análisis de conversación:', error);
+      console.error(`[${analysisId}] 💥 ERROR CRÍTICO EN ANÁLISIS:`, error);
       metrics.errors.push(error instanceof Error ? error.message : 'Error crítico desconocido');
       metrics.totalAnalysisTime = Date.now() - startTime;
       this.recordMetrics(metrics);
@@ -316,7 +360,7 @@ export class BatchMemoryAnalysisService {
       // 1. Convertir mensajes a texto de conversación
       const conversationText = this.messagesToConversationText(messages);
 
-      // 2. Extraer memorias usando Voyage AI con fallback
+      // 2. Extraer memorias usando Venice AI con fallback
       const extractedMemories = await this.extractMemoriesFromBatchWithFallback(conversationText);
       apiCalls++; // Contar llamada a Voyage AI
 
@@ -378,78 +422,29 @@ export class BatchMemoryAnalysisService {
   }
 
   /**
-   * Extrae memorias de un batch usando Voyage AI
+   * Extrae memorias de un batch usando Venice AI y luego genera embeddings con Voyage
    */
   private static async extractMemoriesFromBatch(conversationText: string): Promise<ExtractedMemories> {
-    const prompt = `
-Analiza esta conversación y extrae memorias importantes:
-
-CONVERSACIÓN:
-${conversationText}
-
-EXTRACTA:
-- user_memories: Preferencias, gustos, información personal del usuario
-- avatar_memories: Preferencias, gustos, información personal del avatar
-- shared_memories: Información compartida entre ambos
-
-CATEGORÍAS DISPONIBLES:
-- gustos: musica, comida, deportes, cine_series, literatura, videojuegos, moda, actividades, otros_gustos
-- sexualidad: zona_placer, estilo_favorito, lenguaje_erotico, fantasias, fetiches, rituales_sexuales, tabues
-- relaciones: nicknames, dinámicas_afectivas, roles_relacionales
-- historia_personal: traumas, miedos, afiliaciones, valores, historia_familiar, logros_personales, líneas_de_tiempo
-- emociones, cualidades_personales, anecdotas, otros
-
-FORMATO JSON EXACTO:
-{
-  "user_memories": [
-    {
-      "category": "gustos.musica",
-      "content": "le gusta la música rock y jazz",
-      "tags": ["rock", "jazz", "música"]
-    }
-  ],
-  "avatar_memories": [
-    {
-      "category": "gustos.musica", 
-      "content": "toca guitarra y canta en italiano",
-      "tags": ["guitarra", "canto", "italiano"]
-    }
-  ],
-  "shared_memories": [
-    {
-      "category": "relaciones.nicknames",
-      "content": "se llaman cariñosamente 'mi amor'",
-      "tags": ["cariño", "apodo"]
-    }
-  ]
-}
-
-IMPORTANTE:
-- Solo extrae información relevante y específica
-- Usa categorías exactas de la lista
-- Incluye tags relevantes cuando sea apropiado
-- Si no hay información de un tipo, devuelve array vacío
-`;
-
     try {
-      // Usar Voyage AI para análisis completo
-      console.log('[BatchMemoryAnalysisService] Enviando batch a Voyage AI para análisis...');
-      
-      const response = await VoyageEmbeddingService.analyzeWithVoyage(prompt);
-      
-      // Parsear respuesta JSON
-      const parsedResponse = JSON.parse(response);
-      
-      console.log('[BatchMemoryAnalysisService] Análisis de Voyage AI completado');
-      
-      return {
-        userMemories: parsedResponse.user_memories || [],
-        avatarMemories: parsedResponse.avatar_memories || [],
-        sharedMemories: parsedResponse.shared_memories || []
+      // 1. Analizar conversación con Venice para extraer memorias categorizadas
+      const veniceAnalysis = await VeniceAIService.analyzeConversation(conversationText);
+      // 2. Convertir análisis de Venice a formato de memorias
+      const extracted = VeniceAIService.convertAnalysisToMemories(veniceAnalysis);
+      // 3. Para cada memoria, generar embedding con Voyage
+      const addEmbeddings = async (memories: Array<{category: string, content: string, tags?: string[]}>): Promise<MemoryWithEmbedding[]> => {
+        const result: MemoryWithEmbedding[] = [];
+        for (const mem of memories) {
+          const embedding = await VoyageEmbeddingService.generateEmbedding(mem.content);
+          result.push({ ...mem, embedding });
+        }
+        return result;
       };
-
+      extracted.userMemories = await addEmbeddings(extracted.userMemories);
+      extracted.avatarMemories = await addEmbeddings(extracted.avatarMemories);
+      extracted.sharedMemories = await addEmbeddings(extracted.sharedMemories);
+      return extracted;
     } catch (error) {
-      console.error('[BatchMemoryAnalysisService] Error extrayendo memorias:', error);
+      console.error('[BatchMemoryAnalysisService] Error extrayendo memorias con Venice+Voyage:', error);
       return {
         userMemories: [],
         avatarMemories: [],
@@ -541,7 +536,7 @@ IMPORTANTE:
   private static async saveOrEnrichMemory(
     userId: string,
     avatarId: string,
-    memory: { category: string; content: string; tags?: string[] },
+    memory: { category: string; content: string; tags?: string[]; embedding?: number[] },
     owner: 'user' | 'avatar' | 'shared',
     batchIndex: number,
     totalBatches: number
@@ -560,7 +555,7 @@ IMPORTANTE:
       if (similarMemory) {
         // Enriquecer memoria existente
         const enrichedContent = `${similarMemory.memoryContent} y ${memory.content}`;
-        const enrichedEmbedding = await VoyageEmbeddingService.generateEmbedding(enrichedContent);
+        const enrichedEmbedding = memory.embedding || await VoyageEmbeddingService.generateEmbedding(enrichedContent);
         
         await prisma.userMemory.update({
           where: { id: similarMemory.id },
@@ -575,7 +570,7 @@ IMPORTANTE:
         console.log(`[BatchMemoryAnalysisService] Memoria enriquecida: ${memory.content}`);
       } else {
         // Crear nueva memoria
-        const embedding = await VoyageEmbeddingService.generateEmbedding(memory.content);
+        const embedding = memory.embedding || await VoyageEmbeddingService.generateEmbedding(memory.content);
         
         await prisma.userMemory.create({
           data: {

@@ -109,13 +109,27 @@ class MemoryService {
     memoryContent: string,
     memoryKey?: string,
     confidence: number = 0.5,
-    memoryOwner: 'user' | 'avatar' = 'user'
+    memoryOwner: 'user' | 'avatar' = 'user',
+    categoryId?: number
   ): Promise<void> {
     try {
       console.log(`[MemoryService] Guardando memoria tipo: ${memoryType} (${memoryOwner})`);
       
       // Generar embedding del contenido de la memoria
       const memoryEmbedding = await VoyageEmbeddingService.generateEmbedding(memoryContent);
+      
+      // Buscar categoría por defecto si no se proporciona
+      let finalCategoryId = categoryId;
+      if (!finalCategoryId) {
+        const defaultCategory = await prisma.memoryCategory.findFirst({
+          where: { name: 'otros' }
+        });
+        finalCategoryId = defaultCategory?.id;
+      }
+      
+      if (!finalCategoryId) {
+        throw new Error('No se pudo encontrar una categoría para la memoria');
+      }
       
       // Guardar en la base de datos
       await prisma.userMemory.create({
@@ -128,7 +142,8 @@ class MemoryService {
           memoryVector: JSON.stringify(memoryEmbedding),
           memoryOwner,
           confidence,
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
+          categoryId: finalCategoryId
         }
       });
 

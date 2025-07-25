@@ -141,6 +141,8 @@ model UserMemory {
   id            Int            @id @default(autoincrement())
   userId        String
   avatarId      String
+  memoryType    String         @default("general")
+  memoryKey     String?
   categoryId    Int
   memoryContent String
   memoryVector  String
@@ -159,6 +161,7 @@ model UserMemory {
 
   @@index([userId, avatarId, memoryOwner, confidence])
   @@index([categoryId, isActive])
+  @@index([memoryType])
   @@map("user_memory")
 }
 

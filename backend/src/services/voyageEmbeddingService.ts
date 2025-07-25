@@ -1,4 +1,6 @@
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
+import { RetryService } from './retryService.js';
+import { MetricsService } from './metricsService.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -29,50 +31,74 @@ class VoyageEmbeddingService {
    * Genera embedding para un texto individual
    */
   static async generateEmbedding(text: string): Promise<number[]> {
-    try {
-      console.log(`[VoyageEmbeddingService] Generando embedding para: "${text.substring(0, 50)}..."`);
-      
-      const response = await fetch(this.VOYAGE_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.VOYAGE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: this.MODEL,
-          input: text
-        })
-      });
+    const startTime = Date.now();
+    const textLength = text.length;
+    
+    console.log(`[VoyageEmbeddingService] 🚀 Generando embedding para texto (${textLength} chars): "${text.substring(0, 50)}..."`);
+    
+    // Usar sistema de reintentos
+    const retryResult = await RetryService.withRetry(
+      async () => {
+        const response = await fetch(this.VOYAGE_API_URL, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.VOYAGE_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: this.MODEL,
+            input: text
+          })
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[VoyageEmbeddingService] Error API: ${response.status} - ${errorText}`);
-        throw new Error(`Voyage API error: ${response.status} - ${errorText}`);
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          const errorMsg = `Voyage API error: ${response.status} - ${errorText}`;
+          console.error(`[VoyageEmbeddingService] ❌ ${errorMsg}`);
+          throw new Error(errorMsg);
+        }
 
-      const data = await response.json();
-      const embedding = data.data[0].embedding;
-      
-      console.log(`[VoyageEmbeddingService] Embedding generado: ${embedding.length} dimensiones`);
-      return embedding; // Vector de 1024 dimensiones
-    } catch (error) {
-      console.error('[VoyageEmbeddingService] Error generating Voyage embedding:', error);
-      throw error;
+        const data = await response.json();
+        const embedding = data.data[0].embedding;
+        
+        return embedding; // Vector de 1024 dimensiones
+      },
+      RetryService.getAIAPIConfig()
+    );
+
+    if (!retryResult.success) {
+      console.error(`[VoyageEmbeddingService] ❌ Generación de embedding falló después de ${retryResult.attempts} intentos`);
+      MetricsService.recordAPICall('voyage', false, Date.now() - startTime);
+      throw retryResult.error;
     }
+
+    const generationTime = Date.now() - startTime;
+    MetricsService.recordAPICall('voyage', true, generationTime);
+    console.log(`[VoyageEmbeddingService] ✅ Embedding generado: ${retryResult.data!.length} dimensiones en ${generationTime}ms (${retryResult.attempts} intentos)`);
+    return retryResult.data!;
   }
 
   /**
    * Genera embeddings para múltiples textos (batch processing)
    */
   static async generateBatchEmbeddings(texts: string[]): Promise<number[][]> {
+    const startTime = Date.now();
+    const totalTexts = texts.length;
+    
     try {
-      console.log(`[VoyageEmbeddingService] Generando batch de ${texts.length} embeddings`);
+      console.log(`[VoyageEmbeddingService] 🚀 Generando batch de ${totalTexts} embeddings...`);
       
       const batches = this.chunkArray(texts, this.config.batchSize);
       const allEmbeddings: number[][] = [];
+      let processedBatches = 0;
+
+      console.log(`[VoyageEmbeddingService] 📦 Dividido en ${batches.length} batches de máximo ${this.config.batchSize} textos`);
 
       for (const batch of batches) {
+        const batchStartTime = Date.now();
         try {
+          console.log(`[VoyageEmbeddingService] 🔄 Procesando batch ${processedBatches + 1}/${batches.length} (${batch.length} textos)...`);
+          
           const response = await fetch(this.VOYAGE_API_URL, {
             method: 'POST',
             headers: {
@@ -87,24 +113,29 @@ class VoyageEmbeddingService {
 
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`Voyage API batch error: ${response.status} - ${errorText}`);
+            const errorMsg = `Voyage API batch error: ${response.status} - ${errorText}`;
+            console.error(`[VoyageEmbeddingService] ❌ ${errorMsg}`);
+            throw new Error(errorMsg);
           }
 
           const data = await response.json();
           const batchEmbeddings = data.data.map((item: any) => item.embedding);
           allEmbeddings.push(...batchEmbeddings);
           
-          console.log(`[VoyageEmbeddingService] Batch procesado: ${batchEmbeddings.length} embeddings`);
+          const batchTime = Date.now() - batchStartTime;
+          processedBatches++;
+          console.log(`[VoyageEmbeddingService] ✅ Batch ${processedBatches}/${batches.length} procesado: ${batchEmbeddings.length} embeddings en ${batchTime}ms`);
         } catch (error) {
-          console.error('[VoyageEmbeddingService] Error in batch embedding generation:', error);
+          console.error(`[VoyageEmbeddingService] ❌ Error en batch ${processedBatches + 1}:`, error);
           throw error;
         }
       }
 
-      console.log(`[VoyageEmbeddingService] Total embeddings generados: ${allEmbeddings.length}`);
+      const totalTime = Date.now() - startTime;
+      console.log(`[VoyageEmbeddingService] ✅ Batch completado: ${allEmbeddings.length} embeddings generados en ${totalTime}ms`);
       return allEmbeddings;
     } catch (error) {
-      console.error('[VoyageEmbeddingService] Error in batch processing:', error);
+      console.error(`[VoyageEmbeddingService] ❌ Error en procesamiento de batch:`, error);
       throw error;
     }
   }

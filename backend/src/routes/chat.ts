@@ -8,6 +8,7 @@ import MemoryService from '../services/memoryService.js';
 import ConversationAnalysisService from '../services/conversationAnalysisService.js';
 import { BatchMemoryAnalysisService } from '../services/batchMemoryAnalysisService.js';
 import { ConversationEndDetectionService } from '../services/conversationEndDetectionService.js';
+import { ConversationBufferService } from '../services/conversationBufferService.js';
 
 // Esquemas de validación
 const chatMessageSchema = z.object({
@@ -123,16 +124,60 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Usar historial recibido del frontend o crear uno vacío
-      const history = conversationHistory || [];
+      // Obtener historial: usar el del frontend o consultar la BD si hay avatarId
+      let history = conversationHistory || [];
+      let isReturningUser = false;
       
-      console.log(`[DEBUG] Historial recibido: ${history.length} mensajes`);
+      // Si hay avatarId y el historial del frontend está vacío, consultar la BD
+      if (avatarId && history.length === 0) {
+        console.log(`[DEBUG] Historial del frontend vacío, consultando BD para avatar: ${avatarId}`);
+        console.log(`[DEBUG] Usuario: ${userId}, Avatar: ${avatarId}`);
+        try {
+          // Recuperar mensajes de las últimas 4 horas para contextualización (considerando zonas horarias)
+          console.log(`[DEBUG] Llamando a getMessageHistoryByAvatar con límite de 4 horas...`);
+          const { messages, total } = await DatabaseService.getMessageHistoryByAvatar(userId, avatarId, 4, 100, 0);
+          
+          console.log(`[DEBUG] Respuesta de BD: ${messages.length} mensajes, total: ${total}`);
+          
+          if (messages.length > 0) {
+            console.log(`[DEBUG] Usuario retornando - recuperando conversación completa de las últimas 2 horas`);
+            console.log(`[DEBUG] Primer mensaje:`, messages[0]);
+            console.log(`[DEBUG] Último mensaje:`, messages[messages.length - 1]);
+            isReturningUser = true;
+            
+            // Convertir mensajes de la BD al formato esperado por la IA
+            history = messages.map(msg => ({
+              role: msg.isUser ? 'user' : 'assistant',
+              content: msg.content
+            }));
+            
+            console.log(`[DEBUG] Historial recuperado de BD: ${history.length} mensajes (modo retorno)`);
+          } else {
+            console.log(`[DEBUG] No hay mensajes recientes - comportamiento normal`);
+            console.log(`[DEBUG] Verificando si hay mensajes sin límite de tiempo...`);
+            
+            // Verificar si hay mensajes sin límite de tiempo
+            const { messages: allMessages } = await DatabaseService.getMessageHistoryByAvatar(userId, avatarId, 24, 10, 0);
+            console.log(`[DEBUG] Mensajes en las últimas 24 horas: ${allMessages.length}`);
+          }
+        } catch (error) {
+          console.error(`[DEBUG] Error obteniendo historial de BD:`, error);
+          history = [];
+        }
+      }
+      
+      console.log(`[DEBUG] Historial final: ${history.length} mensajes`);
       console.log(`[DEBUG] Historial completo:`, JSON.stringify(history, null, 2));
       console.log(`[DEBUG] Avatar seleccionado:`, avatarId);
 
       // Convertir memoria del frontend al formato del backend
       let memory: ConversationMemory | undefined;
-      if (conversationMemory && Object.keys(conversationMemory).length > 0) {
+      
+      // Si es un usuario retornando, no usar memoria contextual (Venice se contextualiza solo)
+      if (isReturningUser) {
+        console.log(`[DEBUG] Usuario retornando - no se genera memoria contextual`);
+        memory = undefined;
+      } else if (conversationMemory && Object.keys(conversationMemory).length > 0) {
         memory = {
           summary: conversationMemory.summary || '',
           turnCount: conversationMemory.turnCount || 0,
@@ -249,23 +294,6 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           0 // Los mensajes del usuario no consumen tokens
         );
 
-        // Guardar embedding del mensaje del usuario
-        if (userMessage && avatarId) {
-          try {
-            await MemoryService.saveConversationEmbedding(
-              userId,
-              avatarId,
-              message,
-              'user',
-              undefined, // sessionId se puede añadir después
-              userMessage.id
-            );
-            console.log(`[MEMORY] ✅ Embedding del mensaje del usuario guardado`);
-          } catch (error) {
-            console.error(`[MEMORY] Error guardando embedding del usuario:`, error);
-          }
-        }
-
         // Guardar respuesta de la IA en base de datos
         aiMessage = await DatabaseService.saveMessage(
           userId,
@@ -275,45 +303,39 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           aiResponse.tokensUsed
         );
 
-        // Guardar embedding de la respuesta de la IA
-        if (aiMessage && avatarId) {
+        // Añadir mensajes al buffer de conversación para análisis batch
+        if (avatarId) {
           try {
-            await MemoryService.saveConversationEmbedding(
-              userId,
-              avatarId,
-              aiResponse.message,
-              'avatar',
-              undefined, // sessionId se puede añadir después
-              aiMessage.id
-            );
-            console.log(`[MEMORY] ✅ Embedding de la respuesta de la IA guardado`);
+            // Añadir mensaje del usuario al buffer
+            if (userMessage) {
+              ConversationBufferService.addMessage(
+                userId,
+                avatarId,
+                userMessage.id,
+                message,
+                true
+              );
+            }
+
+            // Añadir respuesta de la IA al buffer
+            if (aiMessage) {
+              ConversationBufferService.addMessage(
+                userId,
+                avatarId,
+                aiMessage.id,
+                aiResponse.message,
+                false
+              );
+            }
+
+            console.log(`[BUFFER] ✅ Mensajes añadidos al buffer de conversación`);
           } catch (error) {
-            console.error(`[MEMORY] Error guardando embedding de la IA:`, error);
+            console.error(`[BUFFER] Error añadiendo mensajes al buffer:`, error);
           }
         }
 
-        // Analizar conversación para extraer información relevante
-        if (avatarId) {
-          try {
-            console.log(`[ANALYSIS] Iniciando análisis de conversación...`);
-            
-            const analysisResult = await ConversationAnalysisService.analyzeConversation(
-              userId,
-              avatarId,
-              message,
-              aiResponse.message,
-              context // Usar la variable context que ya está disponible
-            );
-            
-            if (analysisResult.newMemories > 0) {
-              console.log(`[ANALYSIS] ✅ Análisis completado - ${analysisResult.newMemories} nuevas memorias creadas en ${analysisResult.analysisTime}ms`);
-            } else {
-              console.log(`[ANALYSIS] ✅ Análisis completado - No se encontró información relevante en ${analysisResult.analysisTime}ms`);
-            }
-          } catch (error) {
-            console.error(`[ANALYSIS] Error analizando conversación:`, error);
-          }
-        }
+        // Los mensajes se acumulan en el buffer - NO se analizan individualmente
+        // El análisis se realizará cuando termine la conversación
 
         // Consumir tokens si la respuesta fue exitosa
         if (aiMessage && aiResponse.tokensUsed > 0) {
@@ -411,7 +433,59 @@ export default async function chatRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Obtener historial de chat
+  // Obtener historial de chat por avatar
+  fastify.get('/history/:avatarId', {
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', default: 50 },
+          offset: { type: 'number', default: 0 },
+          hours: { type: 'number', default: 12 }
+        }
+      }
+    },
+    preHandler: [fastify.authenticate]
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { limit = 50, offset = 0, hours = 12 } = request.query as any;
+      const { avatarId } = request.params as any;
+      const userId = (request.user as any)?.userId;
+      
+      console.log(`[HISTORY] Obteniendo historial para usuario ${userId}, avatar ${avatarId}, últimas ${hours} horas`);
+      
+      // Obtener historial por avatar desde base de datos
+      const { messages, total } = await DatabaseService.getMessageHistoryByAvatar(userId, avatarId, hours, limit, offset);
+      
+      // Formatear mensajes para el frontend
+      const formattedMessages = messages.map(msg => ({
+        id: msg.id,
+        message: msg.content,
+        isUser: msg.isUser,
+        timestamp: msg.createdAt.toISOString(),
+        tokensUsed: msg.tokensUsed,
+        avatarId: msg.avatarId
+      }));
+      
+      return reply.send({
+        success: true,
+        messages: formattedMessages,
+        total,
+        hasMore: total > offset + limit,
+        avatarId,
+        hoursLimit: hours
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(400).send({
+        success: false,
+        message: 'Error al obtener el historial por avatar',
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // Obtener historial de chat (todos los avatares)
   fastify.get('/history', {
     schema: {
       querystring: {

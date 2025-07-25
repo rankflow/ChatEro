@@ -140,6 +140,61 @@ export class DatabaseService {
   }
 
   /**
+   * Obtener historial de mensajes por usuario y avatar con límite de tiempo
+   */
+  static async getMessageHistoryByAvatar(
+    userId: string,
+    avatarId: string,
+    hoursLimit: number = 12,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<{ messages: Message[]; total: number }> {
+    try {
+      // Calcular fecha límite (12 horas atrás por defecto)
+      const timeLimit = new Date(Date.now() - hoursLimit * 60 * 60 * 1000);
+      
+      console.log(`[DatabaseService] Obteniendo historial para usuario ${userId}, avatar ${avatarId}, desde ${timeLimit.toISOString()}`);
+      
+      const [messages, total] = await Promise.all([
+        prisma.message.findMany({
+          where: { 
+            userId,
+            avatarId,
+            createdAt: {
+              gte: timeLimit // Solo mensajes de las últimas 12 horas
+            }
+          },
+          orderBy: { createdAt: 'asc' }, // Orden cronológico para conversación
+          take: limit,
+          skip: offset,
+          include: {
+            avatar: true
+          }
+        }),
+        prisma.message.count({
+          where: { 
+            userId,
+            avatarId,
+            createdAt: {
+              gte: timeLimit
+            }
+          }
+        })
+      ]);
+
+      console.log(`[DatabaseService] Encontrados ${messages.length} mensajes de las últimas ${hoursLimit} horas`);
+      
+      return {
+        messages: messages as Message[],
+        total
+      };
+    } catch (error) {
+      console.error('Error obteniendo historial por avatar:', error);
+      return { messages: [], total: 0 };
+    }
+  }
+
+  /**
    * Obtener historial de mensajes del usuario
    */
   static async getMessageHistory(
