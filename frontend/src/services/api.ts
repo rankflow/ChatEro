@@ -169,14 +169,13 @@ class ApiService {
     }
   }
 
-  async getChatHistory(limit: number = 50, offset: number = 0, avatarId?: string): Promise<{ success: boolean; messages: any[]; total: number }> {
-    const url = avatarId 
-      ? `${API_BASE_URL}/api/chat/history/${avatarId}?limit=${limit}&offset=${offset}`
-      : `${API_BASE_URL}/api/chat/history?limit=${limit}&offset=${offset}`;
-    
-    const response = await fetch(url, {
-      headers: this.getAuthHeaders(),
-    });
+  async getChatHistory(limit: number = 50, offset: number = 0): Promise<{ success: boolean; messages: any[]; total: number }> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/chat/history?limit=${limit}&offset=${offset}`,
+      {
+        headers: this.getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       throw new Error('Error obteniendo historial');
