@@ -31,8 +31,13 @@ function ChatPageContent() {
   useEffect(() => {
     loadAvatars();
     loadUserTokens();
-    loadChatHistory();
   }, []);
+
+  useEffect(() => {
+    if (selectedAvatar) {
+      loadChatHistory();
+    }
+  }, [selectedAvatar]);
 
   useEffect(() => {
     scrollToBottom();
@@ -90,6 +95,11 @@ function ChatPageContent() {
     setTimeout(() => setAvatarChanged(false), 3000); // Ocultar después de 3 segundos
     
     console.log(`[AVATAR] Contexto limpiado para ${newAvatar.name}`);
+    
+    // Cargar historial del nuevo avatar
+    setTimeout(() => {
+      loadChatHistory();
+    }, 100); // Pequeño delay para asegurar que el avatar se ha actualizado
   };
 
   const loadUserTokens = async () => {
@@ -104,8 +114,10 @@ function ChatPageContent() {
   };
 
   const loadChatHistory = async () => {
+    if (!selectedAvatar) return;
+    
     try {
-      const response = await apiService.getChatHistory();
+      const response = await apiService.getChatHistory(50, 0, selectedAvatar.id);
       if (response.success && response.messages && response.messages.length > 0) {
         const formattedMessages = response.messages
           .filter((msg: any) => msg.content && msg.content.trim() !== '') // Solo mensajes con contenido
