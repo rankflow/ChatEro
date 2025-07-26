@@ -38,6 +38,23 @@ function ChatPageContent() {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    if (!selectedAvatar) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/keep-alive?avatarId=${selectedAvatar.id}`);
+        const data = await res.json();
+        if (data.shouldClose) {
+          alert('La conversación ha finalizado por inactividad o timeout. Serás redirigido.');
+          window.location.href = '/';
+        }
+      } catch (e) {
+        // Silenciar errores de red
+      }
+    }, 5 * 60 * 1000); // 5 minutos
+    return () => clearInterval(interval);
+  }, [selectedAvatar]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };

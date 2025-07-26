@@ -5,10 +5,10 @@ import { AvatarExtendedMemoryService } from '../services/avatarExtendedMemory.js
 import { AvatarSyncService } from '../services/avatarSyncService.js';
 import { DatabaseService } from '../services/database.js';
 import MemoryService from '../services/memoryService.js';
-import ConversationAnalysisService from '../services/conversationAnalysisService.js';
+
 import { BatchMemoryAnalysisService } from '../services/batchMemoryAnalysisService.js';
 import { ConversationEndDetectionService } from '../services/conversationEndDetectionService.js';
-import { ConversationBufferService } from '../services/conversationBufferService.js';
+import { BatchAnalysisService } from '../services/batchAnalysisService.js';
 
 // Esquemas de validación
 const chatMessageSchema = z.object({
@@ -308,24 +308,24 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           try {
             // Añadir mensaje del usuario al buffer
             if (userMessage) {
-              ConversationBufferService.addMessage(
-                userId,
-                avatarId,
-                userMessage.id,
-                message,
-                true
-              );
+              // ConversationBufferService.addMessage(
+              //   userId,
+              //   avatarId,
+              //   userMessage.id,
+              //   message,
+              //   true
+              // );
             }
 
             // Añadir respuesta de la IA al buffer
             if (aiMessage) {
-              ConversationBufferService.addMessage(
-                userId,
-                avatarId,
-                aiMessage.id,
-                aiResponse.message,
-                false
-              );
+              // ConversationBufferService.addMessage(
+              //   userId,
+              //   avatarId,
+              //   aiMessage.id,
+              //   aiResponse.message,
+              //   false
+              // );
             }
 
             console.log(`[BUFFER] ✅ Mensajes añadidos al buffer de conversación`);
@@ -345,33 +345,70 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           }
         }
 
-        // --- DETECCIÓN DE FIN DE CONVERSACIÓN Y ANÁLISIS BATCH ---
-        if (avatarId) {
-          try {
-            console.log(`[BATCH] Verificando si la conversación ha terminado...`);
-            
-            // Verificar si la conversación ha terminado
-            const conversationEnded = await ConversationEndDetectionService.detectConversationEnd(userId, avatarId);
-            
-            if (conversationEnded) {
-              console.log(`[BATCH] ✅ Conversación terminada - Iniciando análisis batch...`);
+        // --- DETECCIÓN DE PRIMER MENSAJE ---
+        const isFirstMessage = !context || Object.keys(context).length === 0 || (conversationHistory && conversationHistory.length === 0);
+        
+        if (isFirstMessage) {
+          console.log(`[BATCH] Primer mensaje detectado - Saltando verificación de batches`);
+        } else {
+          // --- VERIFICACIÓN DE BATCH ANALYSIS ---
+          if (avatarId) {
+            try {
+              console.log(`[BATCH] Verificando si se debe disparar análisis batch...`);
               
-              // Ejecutar análisis batch de forma asíncrona (no bloquear la respuesta)
-              setImmediate(async () => {
-                try {
-                  await BatchMemoryAnalysisService.analyzeConversation(userId, avatarId);
-                  console.log(`[BATCH] ✅ Análisis batch completado para usuario ${userId} y avatar ${avatarId}`);
-                } catch (error) {
-                  console.error(`[BATCH] ❌ Error en análisis batch:`, error);
-                }
-              });
+              // Verificar si se debe disparar el análisis batch
+              const shouldTriggerBatch = await BatchAnalysisService.shouldTriggerBatch(userId, avatarId);
               
-              console.log(`[BATCH] Análisis batch programado para ejecución asíncrona`);
-            } else {
-              console.log(`[BATCH] Conversación aún activa - No se ejecuta análisis batch`);
+              if (shouldTriggerBatch) {
+                console.log(`[BATCH] ✅ Disparando análisis batch...`);
+                
+                // Ejecutar análisis batch de forma asíncrona (no bloquear la respuesta)
+                setImmediate(async () => {
+                  try {
+                    await BatchAnalysisService.executeBatchAnalysis(userId, avatarId);
+                    console.log(`[BATCH] ✅ Análisis batch completado para usuario ${userId} y avatar ${avatarId}`);
+                  } catch (error) {
+                    console.error(`[BATCH] ❌ Error en análisis batch:`, error);
+                  }
+                });
+                
+                console.log(`[BATCH] Análisis batch programado para ejecución asíncrona`);
+              } else {
+                console.log(`[BATCH] No se cumple ninguna condición para análisis batch`);
+              }
+            } catch (error) {
+              console.error(`[BATCH] Error verificando batch:`, error);
             }
-          } catch (error) {
-            console.error(`[BATCH] Error verificando fin de conversación:`, error);
+          }
+
+          // --- DETECCIÓN DE FIN DE CONVERSACIÓN Y ANÁLISIS BATCH ---
+          if (avatarId) {
+            try {
+              console.log(`[BATCH] Verificando si la conversación ha terminado...`);
+              
+              // Verificar si la conversación ha terminado
+              const conversationEnded = await ConversationEndDetectionService.detectConversationEnd(userId, avatarId);
+              
+              if (conversationEnded) {
+                console.log(`[BATCH] ✅ Conversación terminada - Iniciando análisis batch...`);
+                
+                // Ejecutar análisis batch de forma asíncrona (no bloquear la respuesta)
+                setImmediate(async () => {
+                  try {
+                    await BatchMemoryAnalysisService.analyzeConversation(userId, avatarId);
+                    console.log(`[BATCH] ✅ Análisis batch completado para usuario ${userId} y avatar ${avatarId}`);
+                  } catch (error) {
+                    console.error(`[BATCH] ❌ Error en análisis batch:`, error);
+                  }
+                });
+                
+                console.log(`[BATCH] Análisis batch programado para ejecución asíncrona`);
+              } else {
+                console.log(`[BATCH] Conversación aún activa - No se ejecuta análisis batch`);
+              }
+            } catch (error) {
+              console.error(`[BATCH] Error verificando fin de conversación:`, error);
+            }
           }
         }
       } else {
@@ -636,5 +673,78 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         error: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
+  });
+
+  // Endpoint para manejar señales de pausa del frontend
+  fastify.post('/pause', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['avatarId'],
+        properties: {
+          avatarId: { type: 'string' }
+        }
+      }
+    },
+    preHandler: [fastify.authenticate]
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { avatarId } = request.body as any;
+      const userId = (request.user as any)?.userId;
+      
+      console.log(`[PAUSE] Señal de pausa recibida para usuario ${userId} y avatar ${avatarId}`);
+      
+      // Verificar si se debe disparar el análisis batch por pausa
+      const shouldTriggerBatch = await BatchAnalysisService.shouldTriggerBatch(userId, avatarId);
+      
+      if (shouldTriggerBatch) {
+        console.log(`[PAUSE] ✅ Disparando análisis batch por pausa...`);
+        
+        // Ejecutar análisis batch de forma asíncrona
+        setImmediate(async () => {
+          try {
+            await BatchAnalysisService.executeBatchAnalysis(userId, avatarId);
+            console.log(`[PAUSE] ✅ Análisis batch completado por pausa para usuario ${userId} y avatar ${avatarId}`);
+          } catch (error) {
+            console.error(`[PAUSE] ❌ Error en análisis batch por pausa:`, error);
+          }
+        });
+        
+        console.log(`[PAUSE] Análisis batch programado para ejecución asíncrona`);
+      } else {
+        console.log(`[PAUSE] No se cumple ninguna condición para análisis batch por pausa`);
+      }
+      
+      return reply.send({
+        success: true,
+        message: 'Señal de pausa procesada exitosamente',
+        batchTriggered: shouldTriggerBatch,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(400).send({
+        success: false,
+        message: 'Error procesando señal de pausa',
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // Endpoint keep-alive para comprobar si la conversación sigue activa
+  fastify.get('/keep-alive', {
+    preHandler: [fastify.authenticate]
+  }, async (request, reply) => {
+    const userId = (request.user as any).id;
+    const avatarId = (request.query as any).avatarId;
+    if (!avatarId) {
+      return reply.status(400).send({ error: 'avatarId es requerido' });
+    }
+    // Verificar timeout/conversación finalizada
+    const isExpired = await ConversationEndDetectionService.detectConversationEnd(userId, avatarId);
+    return {
+      active: !isExpired,
+      shouldClose: isExpired
+    };
   });
 } 

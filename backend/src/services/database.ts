@@ -382,4 +382,114 @@ export class DatabaseService {
       return null;
     }
   }
+
+  /**
+   * Obtener mensajes no procesados para análisis batch
+   */
+  static async getUnprocessedMessages(userId: string, avatarId: string): Promise<Message[]> {
+    try {
+      const messages = await prisma.message.findMany({
+        where: {
+          userId,
+          avatarId,
+          isProcessed: false
+        },
+        orderBy: { createdAt: 'asc' }
+      });
+      return messages as Message[];
+    } catch (error) {
+      console.error('Error obteniendo mensajes no procesados:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Marcar mensajes como procesados
+   */
+  static async markMessagesAsProcessed(messageIds: string[]): Promise<void> {
+    try {
+      await prisma.message.updateMany({
+        where: {
+          id: { in: messageIds }
+        },
+        data: {
+          isProcessed: true
+        }
+      });
+    } catch (error) {
+      console.error('Error marcando mensajes como procesados:', error);
+    }
+  }
+
+  /**
+   * Obtener timestamp del último batch
+   */
+  static async getLastBatchTime(userId: string, avatarId: string): Promise<Date | null> {
+    try {
+      const lastBatch = await prisma.batchAnalysis.findFirst({
+        where: {
+          userId,
+          avatarId
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      return lastBatch?.createdAt || null;
+    } catch (error) {
+      console.error('Error obteniendo último batch:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Actualizar timestamp del último batch
+   */
+  static async updateLastBatchTime(userId: string, avatarId: string): Promise<void> {
+    try {
+      await prisma.batchAnalysis.create({
+        data: {
+          userId,
+          avatarId,
+          status: 'completed'
+        }
+      });
+    } catch (error) {
+      console.error('Error actualizando último batch:', error);
+    }
+  }
+
+  /**
+   * Guardar memoria de usuario
+   */
+  static async saveUserMemory(memoryData: {
+    userId: string;
+    avatarId: string;
+    memoryType: string;
+    memoryKey: string;
+    categoryId: number;
+    memoryContent: string;
+    memoryVector: string;
+    memoryOwner: string;
+    source: string;
+    tags?: string;
+  }): Promise<void> {
+    try {
+      await prisma.userMemory.create({
+        data: {
+          userId: memoryData.userId,
+          avatarId: memoryData.avatarId,
+          memoryType: memoryData.memoryType,
+          memoryKey: memoryData.memoryKey,
+          categoryId: memoryData.categoryId,
+          memoryContent: memoryData.memoryContent,
+          memoryVector: memoryData.memoryVector,
+          memoryOwner: memoryData.memoryOwner,
+          source: memoryData.source,
+          tags: memoryData.tags
+        }
+      });
+    } catch (error) {
+      console.error('Error guardando memoria de usuario:', error);
+      throw error;
+    }
+  }
 } 

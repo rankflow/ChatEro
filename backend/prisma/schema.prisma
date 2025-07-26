@@ -22,6 +22,7 @@ model User {
   sessions               Session[]
   tokens                 Token[]
   userMemories           UserMemory[]
+  batchAnalyses          BatchAnalysis[]
 
   @@map("users")
 }
@@ -94,6 +95,7 @@ model Avatar {
   messages               Message[]
   sessionSummaries       SessionSummary[]
   userMemories           UserMemory[]
+  batchAnalyses          BatchAnalysis[]
 
   @@map("avatars")
 }
@@ -105,6 +107,7 @@ model Message {
   content    String
   isUser     Boolean  @default(true)
   tokensUsed Int      @default(0)
+  isProcessed Boolean  @default(false)
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   avatar     Avatar?  @relation(fields: [avatarId], references: [id])
@@ -214,4 +217,18 @@ model SessionSummary {
 
   @@index([userId, sessionId])
   @@map("session_summaries")
+}
+
+model BatchAnalysis {
+  id        String   @id @default(cuid())
+  userId    String
+  avatarId  String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar    Avatar   @relation(fields: [avatarId], references: [id])
+
+  @@index([userId, avatarId])
+  @@index([createdAt])
+  @@map("batch_analysis")
 }

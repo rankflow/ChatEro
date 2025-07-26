@@ -393,6 +393,88 @@ IMPORTANTE:
   }
 
   /**
+   * Procesa mensajes en lote para análisis batch
+   */
+  static async processBatchMessages(messages: any[], userId: string, avatarId: string): Promise<void> {
+    try {
+      console.log(`[VeniceAIService] Procesando ${messages.length} mensajes en lote...`);
+      
+      if (messages.length === 0) {
+        console.log('[VeniceAIService] No hay mensajes para procesar');
+        return;
+      }
+
+      // Combinar todos los mensajes en un solo texto
+      const conversationText = messages
+        .map(msg => `${msg.isUser ? 'Usuario' : 'Avatar'}: ${msg.content}`)
+        .join('\n');
+
+      console.log(`[VeniceAIService] Texto combinado: ${conversationText.length} caracteres`);
+
+      // Analizar conversación con Venice AI
+      const analysis = await this.analyzeConversation(conversationText);
+      
+      // Convertir análisis a memorias
+      const memories = this.convertAnalysisToMemories(analysis);
+      
+      // Guardar memorias en la base de datos
+      await this.saveMemoriesToDatabase(memories, userId, avatarId);
+      
+      console.log(`[VeniceAIService] Procesamiento batch completado`);
+    } catch (error) {
+      console.error('[VeniceAIService] Error procesando mensajes en lote:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Guarda memorias en la base de datos
+   */
+  private static async saveMemoriesToDatabase(memories: ExtractedMemories, userId: string, avatarId: string): Promise<void> {
+    try {
+      // Importar DatabaseService dinámicamente para evitar dependencias circulares
+      const { DatabaseService } = await import('./database.js');
+      
+      // Guardar memorias del usuario
+      for (const memory of memories.userMemories) {
+        await DatabaseService.saveUserMemory({
+          userId,
+          avatarId,
+          memoryType: 'user',
+          memoryKey: memory.category,
+          categoryId: 1, // Categoría por defecto
+          memoryContent: memory.content,
+          memoryVector: '', // Se generará después
+          memoryOwner: 'user',
+          source: 'batch_analysis',
+          tags: memory.tags?.join(',') || ''
+        });
+      }
+
+      // Guardar memorias del avatar
+      for (const memory of memories.avatarMemories) {
+        await DatabaseService.saveUserMemory({
+          userId,
+          avatarId,
+          memoryType: 'avatar',
+          memoryKey: memory.category,
+          categoryId: 1, // Categoría por defecto
+          memoryContent: memory.content,
+          memoryVector: '', // Se generará después
+          memoryOwner: 'avatar',
+          source: 'batch_analysis',
+          tags: memory.tags?.join(',') || ''
+        });
+      }
+
+      console.log(`[VeniceAIService] Memorias guardadas: ${memories.userMemories.length} usuario, ${memories.avatarMemories.length} avatar`);
+    } catch (error) {
+      console.error('[VeniceAIService] Error guardando memorias:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Verifica la conectividad con Venice AI
    */
   static async testConnection(): Promise<boolean> {

@@ -155,44 +155,7 @@ class MemoryService {
     }
   }
 
-  /**
-   * Guarda embeddings de conversación
-   */
-  static async saveConversationEmbedding(
-    userId: string,
-    avatarId: string,
-    content: string,
-    messageType: string,
-    sessionId?: string,
-    messageId?: string
-  ): Promise<void> {
-    try {
-      console.log(`[MemoryService] Guardando embedding de conversación: ${messageType}`);
-      
-      // Generar embedding del contenido
-      const embedding = await VoyageEmbeddingService.generateEmbedding(content);
-      
-      // Guardar en la base de datos
-      await prisma.conversationEmbedding.create({
-        data: {
-          userId,
-          avatarId,
-          sessionId,
-          messageId,
-          content,
-          embedding: JSON.stringify(embedding),
-          messageType,
-          timestamp: new Date()
-        }
-      });
 
-      console.log('[MemoryService] Embedding de conversación guardado');
-
-    } catch (error) {
-      console.error('[MemoryService] Error guardando embedding de conversación:', error);
-      throw error;
-    }
-  }
 
   /**
    * Consolida memorias similares en clusters

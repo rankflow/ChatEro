@@ -23,17 +23,7 @@ interface SaveMemoryRequest {
   };
 }
 
-interface SaveEmbeddingRequest {
-  Params: {
-    avatarId: string;
-  };
-  Body: {
-    content: string;
-    messageType: string;
-    sessionId?: string;
-    messageId?: string;
-  };
-}
+
 
 interface ConsolidateMemoriesRequest {
   Body: {
@@ -182,71 +172,7 @@ export default async function memoryRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Guardar embedding de conversación
-  fastify.post<SaveEmbeddingRequest>(
-    '/memory/embedding/:avatarId',
-    {
-      schema: {
-        params: {
-          type: 'object',
-          properties: {
-            avatarId: { type: 'string' }
-          },
-          required: ['avatarId']
-        },
-        body: {
-          type: 'object',
-          properties: {
-            content: { type: 'string' },
-            messageType: { type: 'string' },
-            sessionId: { type: 'string' },
-            messageId: { type: 'string' }
-          },
-          required: ['content', 'messageType']
-        }
-      }
-    },
-    async (request: FastifyRequest<SaveEmbeddingRequest>, reply: FastifyReply) => {
-      try {
-        const { avatarId } = request.params;
-        const { content, messageType, sessionId, messageId } = request.body;
-        
-        // Obtener userId del token JWT
-        const userId = (request as any).user?.id;
-        if (!userId) {
-          return reply.status(401).send({ error: 'Usuario no autenticado' });
-        }
 
-        console.log(`[Memory API] Guardando embedding de conversación: ${messageType}`);
-        
-        await MemoryService.saveConversationEmbedding(
-          userId,
-          avatarId,
-          content,
-          messageType,
-          sessionId,
-          messageId
-        );
-        
-        return reply.send({
-          success: true,
-          message: 'Embedding guardado exitosamente',
-          data: {
-            messageType,
-            avatarId,
-            userId
-          }
-        });
-
-      } catch (error) {
-        console.error('[Memory API] Error guardando embedding:', error);
-        return reply.status(500).send({ 
-          error: 'Error interno del servidor',
-          details: error instanceof Error ? error.message : 'Error desconocido'
-        });
-      }
-    }
-  );
 
   // Consolidar memorias
   fastify.post<ConsolidateMemoriesRequest>(
