@@ -345,9 +345,9 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           }
         }
 
-        // --- DETECCIÓN DE BATCHES BASADA EN TURNOS ---
+        // --- DETECCIÓN DE PRIMER MENSAJE ---
+        const isFirstMessage = !context || Object.keys(context).length === 0 || (conversationHistory && conversationHistory.length === 0);
         const currentTurnCount = memory?.turnCount || 0;
-        const isFirstMessage = currentTurnCount <= 1;
         
         if (isFirstMessage) {
           console.log(`[BATCH] Primer mensaje detectado (turno ${currentTurnCount}) - Saltando verificación de batches`);
@@ -368,10 +368,11 @@ export default async function chatRoutes(fastify: FastifyInstance) {
                 // Ejecutar análisis batch de forma asíncrona (no bloquear la respuesta)
                 setImmediate(async () => {
                   try {
+                    console.log(`[BATCH] Iniciando análisis batch asíncrono...`);
                     await BatchAnalysisService.executeBatchAnalysis(userId, avatarId);
-                    console.log(`[BATCH] ✅ Análisis batch completado para usuario ${userId} y avatar ${avatarId}`);
+                    console.log(`[BATCH] ✅ Análisis batch completado`);
                   } catch (error) {
-                    console.error(`[BATCH] ❌ Error en análisis batch:`, error);
+                    console.error(`[BATCH] Error en análisis batch:`, error);
                   }
                 });
                 
