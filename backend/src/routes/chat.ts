@@ -345,12 +345,15 @@ export default async function chatRoutes(fastify: FastifyInstance) {
           }
         }
 
-        // --- DETECCIÓN DE PRIMER MENSAJE ---
-        const isFirstMessage = !context || Object.keys(context).length === 0 || (conversationHistory && conversationHistory.length === 0);
+        // --- DETECCIÓN DE BATCHES BASADA EN TURNOS ---
+        const currentTurnCount = memory?.turnCount || 0;
+        const isFirstMessage = currentTurnCount <= 1;
         
         if (isFirstMessage) {
-          console.log(`[BATCH] Primer mensaje detectado - Saltando verificación de batches`);
+          console.log(`[BATCH] Primer mensaje detectado (turno ${currentTurnCount}) - Saltando verificación de batches`);
         } else {
+          console.log(`[BATCH] Turno ${currentTurnCount} - Verificando batches...`);
+          
           // --- VERIFICACIÓN DE BATCH ANALYSIS ---
           if (avatarId) {
             try {
@@ -360,7 +363,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
               const shouldTriggerBatch = await BatchAnalysisService.shouldTriggerBatch(userId, avatarId);
               
               if (shouldTriggerBatch) {
-                console.log(`[BATCH] ✅ Disparando análisis batch...`);
+                console.log(`[BATCH] ✅ Disparando análisis batch en turno ${currentTurnCount}...`);
                 
                 // Ejecutar análisis batch de forma asíncrona (no bloquear la respuesta)
                 setImmediate(async () => {
@@ -374,7 +377,7 @@ export default async function chatRoutes(fastify: FastifyInstance) {
                 
                 console.log(`[BATCH] Análisis batch programado para ejecución asíncrona`);
               } else {
-                console.log(`[BATCH] No se cumple ninguna condición para análisis batch`);
+                console.log(`[BATCH] No se cumple ninguna condición para análisis batch en turno ${currentTurnCount}`);
               }
             } catch (error) {
               console.error(`[BATCH] Error verificando batch:`, error);

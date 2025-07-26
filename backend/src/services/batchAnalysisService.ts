@@ -30,7 +30,7 @@ export class BatchAnalysisService {
       
       // Verificar condiciones de disparo
       const shouldTrigger = 
-        this.checkMessageCount(stats.messageCount) ||
+        this.checkTurnCount(stats.turnCount) ||
         this.checkInactivityTime(stats.lastMessageTime) ||
         this.checkTimeSinceLastBatch(stats.lastBatchTime);
 
@@ -299,11 +299,16 @@ export class BatchAnalysisService {
       userId, avatarId, 4, 1000, 0
     );
 
+    // Contar solo mensajes del usuario (turnos)
+    const userMessages = messages.filter(m => m.isUser);
+    const turnCount = userMessages.length;
+
     // Obtener último batch
     const lastBatch = await DatabaseService.getLastBatchTime(userId, avatarId);
 
     return {
       messageCount: messages.length,
+      turnCount: turnCount, // Añadir conteo de turnos
       lastMessageTime: messages.length > 0 ? messages[messages.length - 1].createdAt : null,
       lastBatchTime: lastBatch,
       hasRecentActivity: messages.some(m => m.createdAt > fourHoursAgo)
@@ -315,6 +320,13 @@ export class BatchAnalysisService {
    */
   private static checkMessageCount(messageCount: number): boolean {
     return messageCount >= this.BATCH_TRIGGERS.minMessages;
+  }
+
+  /**
+   * Verifica condición de cantidad de turnos
+   */
+  private static checkTurnCount(turnCount: number): boolean {
+    return turnCount >= this.BATCH_TRIGGERS.minMessages;
   }
 
   /**
